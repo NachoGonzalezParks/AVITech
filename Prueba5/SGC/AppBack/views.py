@@ -1,5 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
+from .models import TiposIdentificacion
+from .Forms import TipoIdentificacionForm
+from django.shortcuts import get_object_or_404
 
 # Create your views here.
 # Function-based view para home y Pagina2
@@ -13,6 +16,41 @@ def pagina2(request):
 class Pagina3View(View):
     def get(self, request):
         return render(request, 'Pagina3.html')
+    
+
+# Vista para Pagina4.html
+def pagina4(request):
+    tipos_identificacion = TiposIdentificacion.objects.all()
+    return render(request, 'pagina4.html', {'tipos_identificacion': tipos_identificacion})
+
+# Vista para Pagina5.html
+def pagina5(request):
+    if request.method == 'POST':
+        form = TipoIdentificacionForm(request.POST)
+        if form.is_valid():
+            form.save()            
+            return redirect('pagina4')
+    else:
+        form = TipoIdentificacionForm()
+    return render(request, 'pagina5.html', {'form': form})    
+    
+
+def modificar_tipo(request, pk):
+    tipo = get_object_or_404(TiposIdentificacion, pk=pk)
+    if request.method == 'POST':
+        form = TipoIdentificacionForm(request.POST, instance=tipo)
+        if form.is_valid():
+            form.save()
+            return redirect('pagina4')
+    else:
+        form = TipoIdentificacionForm(instance=tipo)
+    return render(request, 'Pagina6.html', {'form': form})
+
+def eliminar_tipo(request, pk):
+    tipo = get_object_or_404(TiposIdentificacion, pk=pk)
+    if request.method == 'POST':
+        tipo.delete()
+        return redirect('pagina4')
     
 '''
 Resumen de diferencias entre Function (Pagina1) views y Class-based views (Pagina2)

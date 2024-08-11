@@ -1,0 +1,27 @@
+<body>
+    <h1>ABM Tipos de Identificación</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Descripción</th>
+            <th>Acciones</th>
+        </tr>
+        {% for tipo in tipos_identificacion %}
+        <tr>
+            <td>{{ tipo.TipoIdentificacionID }}</td>
+            <td>{{ tipo.Descripcion }}</td>
+            <td>
+                <a href="{% url 'modificar_tipo' tipo.TipoIdentificacionID %}">
+                    <button type="button">Modificar</button>
+                </a>
+                <form action="{% url 'eliminar_tipo' tipo.TipoIdentificacionID %}" method="POST" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit">Eliminar</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="{% url 'pagina5' %}"><button>Agregar Tipo de Identificación</button></a>
+</body>
+
