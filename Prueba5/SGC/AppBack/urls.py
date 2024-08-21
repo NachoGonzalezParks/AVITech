@@ -1,5 +1,6 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
+
 
 urlpatterns = [
     path('', views.home, name='home'),  # Página de inicio o /pagina1
@@ -9,5 +10,5 @@ urlpatterns = [
     path('pagina4/', views.pagina4, name='pagina4'),  # Function-based view
     path('pagina5/', views.pagina5, name='pagina5'),  # Function-based view
     path('modificar/<int:pk>/', views.modificar_tipo, name='modificar_tipo'),
-    path('eliminar/<int:pk>/', views.eliminar_tipo, name='eliminar_tipo'),    
+    path('eliminar/<int:pk>/', views.eliminar_tipo, name='eliminar_tipo'),     
 ]

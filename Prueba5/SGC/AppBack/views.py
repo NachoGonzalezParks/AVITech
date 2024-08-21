@@ -4,6 +4,16 @@ from .models import TiposIdentificacion
 from .Forms import TipoIdentificacionForm
 from django.shortcuts import get_object_or_404
 
+
+from rest_framework import viewsets
+from .models import TiposIdentificacion
+from .serializers import TiposIdentificacionSerializer
+
+class TipoIdentificacionViewSet(viewsets.ModelViewSet):
+    queryset = TiposIdentificacion.objects.all()
+    serializer_class = TiposIdentificacionSerializer
+
+
 # Create your views here.
 # Function-based view para home y Pagina2
 def home(request):
