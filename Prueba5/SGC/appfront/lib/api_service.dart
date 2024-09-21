@@ -35,4 +35,41 @@ class ApiService {
     );
     return response.statusCode == 204;
   }
+
+  Future<Map<String, dynamic>?> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> register(
+      String firstName,
+      String lastName,
+      String email,
+      String phone,
+      String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'phone': phone,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      return json.decode(response.body);
+    }
+    return null;
+  }
 }

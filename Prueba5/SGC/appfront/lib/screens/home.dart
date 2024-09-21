@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:appfront/api_service.dart';  // Servicio API que se conecta con el backend Django
 
 class Home extends StatelessWidget {
   const Home({super.key});
@@ -9,20 +11,18 @@ class Home extends StatelessWidget {
       appBar: AppBar(
         title: const Text('ZEUS'),
         actions: [
-          // Adding the button to open the modal at the right side of the AppBar
           TextButton(
             onPressed: () {
-              // Show the modal when the button is pressed
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                shape: RoundedRectangleBorder(
+                shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 builder: (context) => AuthModal(),
               );
             },
-            child: Text(
+            child: const Text(
               'Login/Registro',
               style: TextStyle(color: Colors.black),
             ),
@@ -79,7 +79,7 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
-      padding: EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           TabBar(
@@ -87,7 +87,7 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
             labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
             indicatorColor: Colors.blue,
-            tabs: [
+            tabs: const [
               Tab(text: 'Crear cuenta'), // Register tab
               Tab(text: 'Iniciar sesión'), // Login tab
             ],
@@ -108,32 +108,42 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
 }
 
 class RegisterForm extends StatelessWidget {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _surnameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
           TextField(
-            decoration: InputDecoration(labelText: 'Nombre'),
+            controller: _nameController,
+            decoration: const InputDecoration(labelText: 'Nombre'),
           ),
           TextField(
-            decoration: InputDecoration(labelText: 'Apellido'),
+            controller: _surnameController,
+            decoration: const InputDecoration(labelText: 'Apellido'),
           ),
           TextField(
-            decoration: InputDecoration(labelText: 'Email'),
+            controller: _emailController,
+            decoration: const InputDecoration(labelText: 'Email'),
           ),
           TextField(
-            decoration: InputDecoration(labelText: 'Código de área'),
+            controller: _phoneController,
+            decoration: const InputDecoration(labelText: 'Teléfono'),
           ),
           TextField(
-            decoration: InputDecoration(labelText: 'Teléfono'),
-          ),
-          TextField(
-            decoration: InputDecoration(labelText: 'Contraseña'),
+            controller: _passwordController,
+            decoration: const InputDecoration(labelText: 'Contraseña'),
             obscureText: true,
           ),
           TextField(
-            decoration: InputDecoration(labelText: 'Repite tu contraseña'),
+            controller: _confirmPasswordController,
+            decoration: const InputDecoration(labelText: 'Repite tu contraseña'),
             obscureText: true,
           ),
           Row(
@@ -143,16 +153,36 @@ class RegisterForm extends StatelessWidget {
                 onTap: () {
                   // Handle terms and conditions link
                 },
-                child: Text('Acepto los Términos y condiciones'),
+                child: const Text('Acepto los Términos y condiciones'),
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: () {
-              // Handle Register action
+            onPressed: () async {
+              if (_passwordController.text == _confirmPasswordController.text) {
+                var response = await Provider.of<ApiService>(context, listen: false).register(
+                  _nameController.text,
+                  _surnameController.text,
+                  _emailController.text,
+                  _phoneController.text,
+                  _passwordController.text,
+                );
+
+                if (response != null && response['token'] != null) {
+                  Navigator.pushReplacementNamed(context, '/home');
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error al crear la cuenta')),
+                  );
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Las contraseñas no coinciden')),
+                );
+              }
             },
-            child: Text('Crear cuenta'),
+            child: const Text('Crear cuenta'),
           ),
         ],
       ),
@@ -161,47 +191,57 @@ class RegisterForm extends StatelessWidget {
 }
 
 class LoginForm extends StatelessWidget {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
           TextField(
-            decoration: InputDecoration(labelText: 'Email'),
+            controller: _emailController,
+            decoration: const InputDecoration(labelText: 'Email'),
           ),
           TextField(
-            decoration: InputDecoration(labelText: 'Contraseña'),
+            controller: _passwordController,
+            decoration: const InputDecoration(labelText: 'Contraseña'),
             obscureText: true,
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           GestureDetector(
             onTap: () {
               // Handle forgot password link
             },
-            child: Text('¿Olvidaste tu contraseña?', style: TextStyle(color: Colors.blue)),
+            child: const Text('¿Olvidaste tu contraseña?', style: TextStyle(color: Colors.blue)),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: () {
-              // Handle Login action
+            onPressed: () async {
+              var response = await Provider.of<ApiService>(context, listen: false).login(
+                _emailController.text,
+                _passwordController.text,
+              );
+
+              if (response != null && response['token'] != null) {
+                Navigator.pushReplacementNamed(context, '/home');
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Error de inicio de sesión')),
+                );
+              }
             },
-            child: Text('Iniciar sesión'),
+            child: const Text('Iniciar sesión'),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           GestureDetector(
             onTap: () {
               // Handle account creation
             },
-            child: Text('¿No tenés cuenta de organizador? Creá tu cuenta'),
+            child: const Text('¿No tenés cuenta de organizador? Creá tu cuenta'),
           ),
         ],
       ),
     );
   }
 }
-
-
-
-
-
-
