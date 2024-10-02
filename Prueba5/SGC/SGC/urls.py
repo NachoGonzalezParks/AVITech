@@ -23,17 +23,16 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 #from .views import TipoIdentificacionViewSet
-from AppBack.views import TipoIdentificacionViewSet
-
+#from AppBack.views import TipoIdentificacionViewSet
 from django.views.generic import TemplateView
-
-
+#from AppBack.views import login_view #, ProtectedView, welcome_view   ### Agregar tablas (models)
+from AppBack.views import get_user_groups
 
 router = DefaultRouter()
-router.register(r'tipos-identificacion', TipoIdentificacionViewSet, basename='tipoidentificacion')
+#router.register(r'tipos-identificacion', TipoIdentificacionViewSet, basename='tipoidentificacion')
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('AppBack.urls')),  # Incluimos las URLs de AppBack
+    #path('', include('AppBack.urls')),  # Incluimos las URLs de AppBack
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('accounts/', include('allauth.urls')),
@@ -41,6 +40,11 @@ urlpatterns = [
     path('api/auth/registration/',include('dj_rest_auth.registration.urls')),
     #path('api/welcome/', welcome_view, name='welcome'),
     #path('', TemplateView.as_view(template_name='index.html')),
-    path('api/', include(router.urls)),   
+    #path('api/', include(router.urls)),   
     path('', TemplateView.as_view(template_name='flutter_web/index.html')),
+    #path('api/auth/login/', login_view, name='login'), 
+    path('api/auth/user/groups/', get_user_groups, name='get_user_groups'),
 ]
+
+
+
