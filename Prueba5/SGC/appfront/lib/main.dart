@@ -4,7 +4,6 @@ import 'package:appfront/api_service.dart';
 import 'package:appfront/screens/login_screen.dart';
 import 'package:appfront/screens/register_screen.dart';
 import 'package:appfront/screens/home_screen.dart';
-import 'package:appfront/screens/password_reset_screen.dart';
 
 void main() {
   runApp(

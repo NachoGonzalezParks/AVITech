@@ -26,8 +26,7 @@ SECRET_KEY = 'django-insecure-i4pb86*0qv5@en_lw+l5vd$=xlobgt$05q4!#nn7as==338xr-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True # False #True
 
-# ALLOWED_HOSTS = ['localhost', '127.0.0.1',]
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1',]
 
 
 # Application definition
@@ -164,6 +163,13 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 
+
+'''
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+'''
 
 SITE_ID = 1
 EMAIL_USE_TLS = True
