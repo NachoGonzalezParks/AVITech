@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+<<<<<<< Updated upstream
 import 'package:appfront/screens/pagina10.dart';
+=======
+import 'package:provider/provider.dart';
+import 'package:appfront/api_service.dart'; 
+import 'package:appfront/screens/login_screen.dart';
+import 'package:appfront/screens/register_screen.dart';
+import 'package:appfront/screens/home_screen.dart';
+import 'package:appfront/screens/password_reset_screen.dart';
+>>>>>>> Stashed changes
 
 void main() {
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

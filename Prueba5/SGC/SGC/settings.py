@@ -26,7 +26,12 @@ SECRET_KEY = 'django-insecure-i4pb86*0qv5@en_lw+l5vd$=xlobgt$05q4!#nn7as==338xr-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+<<<<<<< Updated upstream
 ALLOWED_HOSTS = []
+=======
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1',]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+>>>>>>> Stashed changes
 
 
 # Application definition
@@ -54,14 +59,13 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-
 ]
 
 ROOT_URLCONF = 'SGC.urls'
@@ -88,6 +92,7 @@ WSGI_APPLICATION = 'SGC.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+<<<<<<< Updated upstream
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -95,6 +100,26 @@ DATABASES = {
     }
 }
 
+=======
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'Prueba5_PSQL',
+        'USER': 'postgres',
+        'PASSWORD': '123Bbokari123',
+        'HOST': 'localhost',  # o el host donde está tu base de datos
+        'PORT': '5432',       # El puerto por defecto de PostgreSQL es 5432
+    }
+}
+>>>>>>> Stashed changes
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -139,9 +164,27 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+<<<<<<< Updated upstream
 CORS_ALLOW_ALL_ORIGINS = True  # Permitir todas las solicitudes de origen para pruebas, cambia esto en producción
+=======
+CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://*.localhost',
+    'http://localhost:*',      # IP para emulador de Android
+]
+
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+
+>>>>>>> Stashed changes
 
 SITE_ID = 1
+EMAIL_USE_TLS = True
+DEFAULT_DOMAIN = 'http://localhost:8000'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -159,3 +202,33 @@ ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Para pruebas locales
+
+# Para producción (verificar)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ka.hinados02@gmail.com'
+EMAIL_HOST_PASSWORD = 'hlbvcbythgjcphmg'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'django_debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}

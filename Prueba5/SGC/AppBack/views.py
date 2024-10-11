@@ -1,3 +1,61 @@
+<<<<<<< Updated upstream
+=======
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.models import Group
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_groups(request):
+    user = request.user
+    groups = user.groups.all()  # Obtener los grupos a los que pertenece el usuario
+    group_names = [group.name for group in groups]
+    
+    return Response({
+        'pk': user.pk,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'groups': group_names  # Agregar los nombres de los grupos
+    })
+
+
+'''
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    # Autenticamos utilizando el email
+    user = authenticate(username=email, password=password)
+
+    if user is not None:
+        # Genera el token JWT
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'groups': [group.name for group in user.groups.all()],
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+'''
+
+'''
+>>>>>>> Stashed changes
 from django.shortcuts import render, redirect
 from django.views import View
 from .models import TiposIdentificacion

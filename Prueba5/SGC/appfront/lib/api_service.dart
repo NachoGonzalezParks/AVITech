@@ -1,8 +1,17 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class ApiService {
-  final String baseUrl = 'http://localhost:8000/api/';
+class ApiService extends ChangeNotifier {
+  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  
+  bool _isLoading = false;
+
+  bool get isLoading => _isLoading;
+
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
 
   Future<List<dynamic>> getTiposIdentificacion() async {
     final response = await http.get(Uri.parse('${baseUrl}tipos-identificacion/'));
@@ -13,7 +22,9 @@ class ApiService {
     }
   }
 
-  Future<bool> addTipoIdentificacion(String descripcion) async {
+
+  Future<Map<String, dynamic>> register(String email, String password1, String password2) async {
+    _setLoading(true);
     final response = await http.post(
       Uri.parse('${baseUrl}tipos-identificacion/'),
       body: {'Descripcion': descripcion},
