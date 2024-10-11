@@ -1,9 +1,0 @@
-<body>
-    <h1>Modificar Tipo de Identificación</h1>
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Guardar Cambios</button>
-        <a href="{% url 'pagina4' %}"><button type="button">Cancelar</button></a>
-    </form>
-</body>

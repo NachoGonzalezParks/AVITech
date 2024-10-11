@@ -23,24 +23,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 #from .views import TipoIdentificacionViewSet
-from AppBack.views import TipoIdentificacionViewSet
-
+#from AppBack.views import TipoIdentificacionViewSet
 from django.views.generic import TemplateView
-<<<<<<< Updated upstream
-
-
-=======
 #from AppBack.views import login_view #, ProtectedView, welcome_view   ### Agregar tablas (models)
 from AppBack.views import get_user_groups
 from dj_rest_auth.views import PasswordResetView, PasswordResetConfirmView
 from django.contrib.auth import views as auth_views
->>>>>>> Stashed changes
 
 router = DefaultRouter()
-router.register(r'tipos-identificacion', TipoIdentificacionViewSet, basename='tipoidentificacion')
+#router.register(r'tipos-identificacion', TipoIdentificacionViewSet, basename='tipoidentificacion')
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('AppBack.urls')),  # Incluimos las URLs de AppBack
+    #path('', include('AppBack.urls')),  # Incluimos las URLs de AppBack
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('accounts/', include('allauth.urls')),
@@ -50,10 +44,8 @@ urlpatterns = [
     # path('api/auth/password/reset/confirm/<uidb64>/<token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),    
     #path('api/welcome/', welcome_view, name='welcome'),
     #path('', TemplateView.as_view(template_name='index.html')),
-    path('api/', include(router.urls)),   
+    #path('api/', include(router.urls)),   
     path('', TemplateView.as_view(template_name='flutter_web/index.html')),
-<<<<<<< Updated upstream
-=======
     #path('api/auth/login/', login_view, name='login'), 
     path('auth/user/groups/', get_user_groups, name='get_user_groups'),
     path(
@@ -69,5 +61,7 @@ urlpatterns = [
     path('reset_password_send/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
->>>>>>> Stashed changes
 ]
+
+
+
