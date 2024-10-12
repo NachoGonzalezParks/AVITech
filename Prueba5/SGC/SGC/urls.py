@@ -24,6 +24,7 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 #from .views import TipoIdentificacionViewSet
 #from AppBack.views import TipoIdentificacionViewSet
+from AppBack import views
 from django.views.generic import TemplateView
 #from AppBack.views import login_view #, ProtectedView, welcome_view   ### Agregar tablas (models)
 from AppBack.views import get_user_groups
@@ -61,6 +62,8 @@ urlpatterns = [
     path('reset_password_send/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path('controlar_email/', views.controlar_usuario, name='controlar_usuario'),  # Function-based view
+    path('registro/', views.registro_usuario, name='registro_usuario'),  
 ]
 
 

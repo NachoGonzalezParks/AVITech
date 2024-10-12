@@ -1,3 +1,5 @@
+''' # No usado
+
 from django.urls import path, include
 from . import views
 
@@ -12,3 +14,5 @@ urlpatterns = [
     path('modificar/<int:pk>/', views.modificar_tipo, name='modificar_tipo'),
     path('eliminar/<int:pk>/', views.eliminar_tipo, name='eliminar_tipo'),     
 ]
+
+'''

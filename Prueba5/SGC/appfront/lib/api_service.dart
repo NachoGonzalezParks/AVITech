@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService extends ChangeNotifier {
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static const String baseUrl = 'http://127.0.0.1:8000/api';
   
   bool _isLoading = false;
 
@@ -13,8 +13,6 @@ class ApiService extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
-
-
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     _setLoading(true);
@@ -44,6 +42,7 @@ class ApiService extends ChangeNotifier {
         'Authorization': 'Token $token',
       },
     );
+    
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -52,15 +51,32 @@ class ApiService extends ChangeNotifier {
     }
   }
 
+
   Future<Map<String, dynamic>> register(String email, String password1, String password2) async {
     _setLoading(true);
     final response = await http.post(
+      /*
       Uri.parse('$baseUrl/auth/registration/'),
       body: {
         'email': email,
         'password1': password1,
         'password2': password2,
       },
+      */
+      Uri.parse('$baseUrl/registro/'),
+      body: {
+        'email': email,
+        'password1': password1,
+        'password2': password2,
+        'nombre' : 'Nombre de prueba',  //provisorio
+        'apellido' : 'Apellido de prueba',  //provisorio
+        'alias' : 'alias',  //provisorio
+        'tipo_identificacion' : 'DNI',  //provisorio
+        'numero_identificacion' : '23379868',  //provisorio
+        'fecha_nacimiento' : '08/12/1973',  //provisorio
+        'telefono' : '543516832067',  //provisorio
+      },
+
     );
     _setLoading(false);
 

@@ -58,9 +58,12 @@ class LoginScreenState extends State<LoginScreen> {
 
                 if (!context.mounted) return;
 
+                /*
                 if (response['key'] != null) {
                   String token = response['key'];
+                  // Llamar a la función para obtener los detalles del usuario
                   var userDetails = await Provider.of<ApiService>(currentContext, listen: false).getUserDetails(token);
+
                   Navigator.pushReplacementNamed(
                     currentContext,
                     '/home',
@@ -69,10 +72,36 @@ class LoginScreenState extends State<LoginScreen> {
                       'last_name': userDetails['last_name'],
                     },
                   );
-                } else {
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Error de inicio de sesión (algo salió mal)')),
-                  );
+                }
+                */
+                /*
+                if (response['key'] != null) {
+                    Navigator.pushReplacementNamed(
+                      currentContext,
+                      '/home',
+                      arguments: {
+                        'first_name': response['first_name'],
+                        'last_name': response['last_name'],
+                        'groups': response['groups'], 
+                      },
+                    );
+                } */
+                if (response['key'] != null) {
+                    String token = response['key'];
+                    var userDetails = await Provider.of<ApiService>(currentContext, listen: false).getUserDetails(token);
+                    Navigator.pushReplacementNamed(
+                      currentContext,
+                      '/home',
+                      arguments: {
+                        'first_name': userDetails['first_name'],
+                        'last_name': userDetails['last_name'],
+                        //'groups': userDetails['groups'], 
+                      },
+                    );
+                }else {
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Error de inicio de sesión (algo salió mal)')),
+                    );
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -85,13 +114,6 @@ class LoginScreenState extends State<LoginScreen> {
                 Navigator.pushNamed(context, '/register');
               },
               child: const Text('Registrarse'),
-            ),
-            const SizedBox(height: 10), // Espacio entre botones
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/reset_password'); // Navegar a la pantalla de reset
-              },
-              child: const Text('¿Olvidaste tu contraseña?'),
             ),
           ],
         ),

@@ -3,6 +3,36 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import Group
 
+def controlar_usuario(request):
+    return True  # Aca hay que controlar si el email a dar de alta ya existe (es para cuando el usuario ingresa el email con qel cual se va a registrar)
+
+
+@api_view(['POST'])
+def registro_usuario(request):
+    username =request.email 
+    email = request.email
+    password1 = request.password1
+    password2 = request.password2
+    nombre = request.nombre
+    apellido = request.apellido
+    alias = request.alias
+    tipo_identificacion = request.tipo_identificacion
+    numero_identificacion = request.numero_identificacion
+    fecha_nacimiento = request.fecha_nacimiento
+    telefono = request.telefono
+
+    # llamar al end point http://127.0.0.1:8000/api/auth/registration/ pasando username, email , pass1 y pass2
+
+    # si la respuesta de api/auth/registration es correcta dar de alta el resto de la info
+        # si la inserción del resto es correcta enviar mensaje de éxito al front con aviso que se envió mail para verificar
+        # si la inserción del resto es incorrecta devolver borrar el usuario dado de alta y devolver mensaje al front
+
+    # si la respuesta de api/auth/registration es incorrecta devolver info al front
+
+
+
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_groups(request):

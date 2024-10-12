@@ -5,13 +5,21 @@ from django.db import models
 #Tabla TiposIdentificacion
 class TiposIdentificacion(models.Model):
     TipoIdentificacionID = models.AutoField(primary_key=True, editable=False)
-    Descripcion = models.CharField(max_length=15)
-    Campo_entero = models.IntegerField(null=True)
-    Otro_campo = models.CharField(max_length=15, null=True)
-    Otro_campo2 = models.CharField(max_length=15, null=False, default='A')
-    Campo_entero2 = models.IntegerField(null=True)
-    lcdll = models.DateField(null=True)
-    lcdll2 = models.DateTimeField(null=True)
+    Codigo = models.CharField(max_length=10)
+    Descripcion = models.CharField(max_length=25)
 
     def __str__(self):
         return self.Descripcion
+    
+class Personas(models.Model):
+    PersonaID = models.AutoField(primary_key=True, editable=False)
+    Nombre = models.CharField(max_length=100)
+    Apellido = models.CharField(max_length=100)
+    Alias = models.CharField(max_length=50)
+    TipoIdentificacionID = models.ForeignKey(TiposIdentificacion, on_delete=models.PROTECT)
+    NroIdentificacion = models.CharField(max_length=20)
+    FechaNacimiento = models.DateField()
+    Telefono = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f"{self.Nombre} {self.Alias} {self.Apellido} "
