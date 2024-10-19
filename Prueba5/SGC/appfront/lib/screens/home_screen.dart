@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:appfront/widgets/navbar.dart';
+import 'package:appfront/widgets/footer.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pantalla Principal'),
+      appBar: NavBar(
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Lógica para cerrar sesión
+              Navigator.pushReplacementNamed(context, '/landing');
+            },
+            child: Text('Cerrar Sesión', style: TextStyle(color: colorScheme.onPrimary)),
+          ),
+        ],
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Hola, Bienvenido ${args['first_name']} ${args['last_name']}!'),
-            const SizedBox(height: 20),
-            //Text('Grupos: ${args['groups'].map((g) => g['name']).join(", ")}'),
-          ],
-        ),
+        child: Text('Bienvenido a la página principal de Zeus'),
       ),
+      bottomNavigationBar: const FooterBar(),
     );
   }
 }

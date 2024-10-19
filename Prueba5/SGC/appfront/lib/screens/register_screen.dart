@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appfront/api_service.dart';
+import 'package:appfront/widgets/navbar.dart';
+import 'package:appfront/widgets/footer.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,9 +18,24 @@ class RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registro'),
+      appBar: NavBar(
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: Text('Login', style: TextStyle(color: colorScheme.onPrimary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/landing');
+            },
+            child: Text('Home', style: TextStyle(color: colorScheme.onPrimary)),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -65,6 +82,11 @@ class RegisterScreenState extends State<RegisterScreen> {
                   );
                 }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.secondary,
+                foregroundColor: colorScheme.onSecondary,
+                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+              ),
               child: const Text('Registrarse'),
             ),
             TextButton(
@@ -76,6 +98,7 @@ class RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const FooterBar(),
     );
   }
 }
