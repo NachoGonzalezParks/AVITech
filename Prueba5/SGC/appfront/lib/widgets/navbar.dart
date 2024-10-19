@@ -14,29 +14,40 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo en la izquierda
-          Container(
-            width: 50, // Cambia el tamaño según la imagen que insertes
-            height: 50,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/logo.png'), // Ruta del logo
-                fit: BoxFit.cover,
+          // Logo
+          Expanded(
+            flex: 2, // Equivalente al 20% del ancho
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: Icon(Icons.menu), // Puedes reemplazar con tu logo
+                onPressed: () {
+                  // Acción del logo
+                },
               ),
             ),
           ),
           // Título en el centro
-          Text(
-            'Zeus',
-            style: TextStyle(
-              color: colorScheme.onPrimary,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+          Expanded(
+            flex: 4, // Equivalente al 40% del ancho
+            child: Center(
+              child: Text(
+                'Zeus', // Tu texto del título
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // Color del texto
+                ),
+              ),
             ),
           ),
           // Botones a la derecha (recibidos como parámetro)
-          Row(children: actions),
-        ],
+          Expanded(
+          flex: 2, // Equivalente al 40% del ancho
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: actions),
+          )],
       ),
     );
   }

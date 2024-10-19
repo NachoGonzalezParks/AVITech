@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:appfront/widgets/navbar.dart';
+import 'package:appfront/widgets/footer.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -8,51 +10,21 @@ class LandingScreen extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colorScheme.primary, // Fondo con el color primario (azul)
-        elevation: 0,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Logo en la izquierda
-            Container(
-              width: 50, // Cambia el tamaño según la imagen que insertes
-              height: 50,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/logo.png'), // Ruta del logo
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            // Título en el centro
-            Text(
-              'Zeus',
-              style: TextStyle(
-                color: colorScheme.onPrimary, // Color de texto sobre color primario
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            // Botones de Login y Registro a la derecha
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/login');
-                  },
-                  child: Text('Login', style: TextStyle(color: colorScheme.onPrimary)),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/register');
-                  },
-                  child: Text('Register', style: TextStyle(color: colorScheme.onPrimary)),
-                ),
-              ],
-            ),
-          ],
-        ),
+      appBar: NavBar(
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: Text('Login', style: TextStyle(color: colorScheme.onPrimary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/register');
+            },
+            child: Text('Register', style: TextStyle(color: colorScheme.onPrimary)),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -99,43 +71,7 @@ class LandingScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        color: colorScheme.primary, // Footer con el color primario
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '© 2024 Zeus App',
-                style: TextStyle(color: colorScheme.onPrimary), // Texto con el color adecuado
-              ),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      // Acción para ir a términos y condiciones
-                    },
-                    child: Text(
-                      'Términos y Condiciones',
-                      style: TextStyle(color: colorScheme.onPrimary), // Texto sobre fondo primario
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // Acción para ir a política de privacidad
-                    },
-                    child: Text(
-                      'Política de Privacidad',
-                      style: TextStyle(color: colorScheme.onPrimary), // Texto sobre fondo primario
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: const FooterBar(),
     );
   }
 }
