@@ -1,25 +1,17 @@
+import requests
+from django.conf import settings
+from django.db import transaction  # Para asegurar atomicidad
+from django.contrib.auth.models import Group
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth.models import Group
+
+
 
 def controlar_usuario(request):
     return True  # Aca hay que controlar si el email a dar de alta ya existe (es para cuando el usuario ingresa el email con qel cual se va a registrar)
 
-
-@api_view(['POST'])
-def registro_usuario(request):
-    username =request.email 
-    email = request.email
-    password1 = request.password1
-    password2 = request.password2
-    nombre = request.nombre
-    apellido = request.apellido
-    alias = request.alias
-    tipo_identificacion = request.tipo_identificacion
-    numero_identificacion = request.numero_identificacion
-    fecha_nacimiento = request.fecha_nacimiento
-    telefono = request.telefono
 
     # llamar al end point http://127.0.0.1:8000/api/auth/registration/ pasando username, email , pass1 y pass2
 
@@ -30,6 +22,77 @@ def registro_usuario(request):
     # si la respuesta de api/auth/registration es incorrecta devolver info al front
 
 
+
+@api_view(['POST'])
+@transaction.atomic  # Garantiza que si algo falla, la transacción se deshace (rollback).
+def registro_usuario(request):
+    # Datos recibidos desde el front
+    username = request.data.get('email')
+    email = request.data.get('email')
+    password1 = request.data.get('password1')
+    password2 = request.data.get('password2')
+    nombre = request.data.get('nombre')
+    apellido = request.data.get('apellido')
+    alias = request.data.get('alias')
+    tipo_identificacion = request.data.get('tipo_identificacion')
+    numero_identificacion = request.data.get('numero_identificacion')
+    fecha_nacimiento = request.data.get('fecha_nacimiento')
+    telefono = request.data.get('telefono')
+
+    try:        
+        # Primero llamamos al registro en /api/auth/registration/
+    
+        #response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data=request.data)
+        response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data={
+        'username': email,
+        'email': email,
+        'password1': password1,
+        'password2': password2,                
+        })
+    
+        #return Response({'success': False, 'message': 'Error: al agregar el usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if response.status_code == 201:  # Registro exitoso
+            # Convertir el tipo de identificación a su ID
+            from .models import Personas, TiposIdentificacion
+            from django.contrib.auth.models import User
+            user = User.objects.get(email=email),
+                    
+            tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   #request.data['tipo_identificacion'])
+        
+            #return Response({'success': False, 'message': 'Error: Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Registrar la persona solo si el registro del usuario fue exitoso
+            persona = Personas.objects.create(
+                UserID=user[0],
+                Nombre=request.data['nombre'],
+                Apellido=request.data['apellido'],
+                Alias=request.data['alias'],
+                TipoIdentificacionID=tipo_identificacion_obj,
+                NroIdentificacion=request.data['numero_identificacion'],
+                FechaNacimiento=request.data['fecha_nacimiento'],
+                Telefono=request.data['telefono']
+            )
+
+            return Response({'success': True, 'message': 'Registro exitoso. Revisa tu correo para confirmar tu cuenta.'}, status=status.HTTP_201_CREATED)
+            
+            #return Response({'success': False, 'message': 'Error en el registro de datos personales.'}, status=status.HTTP_400_BAD_REQUEST)
+  
+        else:
+            # Si falla el registro del usuario
+            return Response({'success': False, 'message': 'Error general en el registro de usuario (status < > a 201).'}, status=response.status_code)
+
+    except Exception as e:
+        # Si ocurre algún otro error en cualquier parte del proceso, la transacción se deshace
+        transaction.set_rollback(True)
+        return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+'''
+    except TiposIdentificacion.DoesNotExist:
+        transaction.set_rollback(True)
+        return Response({'success': False, 'message': 'Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST
+'''
 
 
 

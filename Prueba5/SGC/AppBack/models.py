@@ -1,18 +1,19 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
 #Tabla TiposIdentificacion
 class TiposIdentificacion(models.Model):
     TipoIdentificacionID = models.AutoField(primary_key=True, editable=False)
-    Codigo = models.CharField(max_length=10)
+    Codigo = models.CharField(max_length=10, default='Otro')
     Descripcion = models.CharField(max_length=25)
 
     def __str__(self):
         return self.Descripcion
     
 class Personas(models.Model):
-    PersonaID = models.AutoField(primary_key=True, editable=False)
+    UserID = models.OneToOneField(User, on_delete=models.CASCADE)  # Relación 1 a 1 con el usuario 
     Nombre = models.CharField(max_length=100)
     Apellido = models.CharField(max_length=100)
     Alias = models.CharField(max_length=50)
