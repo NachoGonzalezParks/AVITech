@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appfront/api_service.dart';
+import 'package:appfront/widgets/navbar.dart'; // Incluimos el NavBar modularizado
+import 'package:appfront/widgets/footer.dart'; // Incluimos el FooterBar modularizado
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,9 +17,18 @@ class LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inicio de Sesión'),
+      appBar: NavBar(
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/landing');
+            },
+            child: Text('Home', style: TextStyle(color: colorScheme.onPrimary)),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -105,6 +116,8 @@ class LoginScreenState extends State<LoginScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.secondary,
+                foregroundColor: colorScheme.onSecondary,
                 padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
               ),
               child: const Text('Iniciar Sesión'),
@@ -118,6 +131,7 @@ class LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const FooterBar(),
     );
   }
 }
