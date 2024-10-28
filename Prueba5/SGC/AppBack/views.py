@@ -1,31 +1,62 @@
 import requests
 from django.conf import settings
 from django.db import transaction  # Para asegurar atomicidad
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token        
+from allauth.account.models import EmailAddress        
+from .models import Personas, TiposIdentificacion                
+
+
+@api_view(['POST'])
+def email_existe(request):
+    # verificar si el email recibido del front ya existe en BD  (cuando el usuario ingresa el email con el cual se va a registrar)    
+
+    # Recibe el email desde el request
+    email = request.data.get('email')
+
+    # Verifica si el email ya está en uso
+    email_existe = User.objects.filter(email=email).exists() or User.objects.filter(username=email).exists()
+
+    # Devuelve true si el email existe, false si está disponible
+    if email_existe:
+        return Response({'existe': True}, status=status.HTTP_200_OK)
+    else:
+        return Response({'existe': False}, status=status.HTTP_200_OK)
 
 
 
-def controlar_usuario(request):
-    return True  # Aca hay que controlar si el email a dar de alta ya existe (es para cuando el usuario ingresa el email con qel cual se va a registrar)
-
-
-    # llamar al end point http://127.0.0.1:8000/api/auth/registration/ pasando username, email , pass1 y pass2
-
-    # si la respuesta de api/auth/registration es correcta dar de alta el resto de la info
-        # si la inserción del resto es correcta enviar mensaje de éxito al front con aviso que se envió mail para verificar
-        # si la inserción del resto es incorrecta devolver borrar el usuario dado de alta y devolver mensaje al front
-
-    # si la respuesta de api/auth/registration es incorrecta devolver info al front
+    ''' JSON de ejemplo para probar registro_usuario
+    {
+    "email": "user@example.com",
+    "password1": "password123",
+    "password2": "password123",
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "alias": "jperez",
+    "tipo_identificacion": "DNI",
+    "numero_identificacion": "12345678",
+    "fecha_nacimiento": "1980-12-08",
+    "telefono": "543516932000"
+    }
+    '''
 
 
 
 @api_view(['POST'])
 @transaction.atomic  # Garantiza que si algo falla, la transacción se deshace (rollback).
 def registro_usuario(request):
+    # Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
+
+    '''Falta PROBAR y eventualmente corregir:
+      1) Datos no válidos como pass débiles, formato de fecha incorrecto, tipo de identificación inexistente, nombre vacíoy apellido
+      2) ver si la transacción hace rollback de todas las tablas ante un error
+      2) Clasificar posibles mensajes de error a devolver al front
+    '''
+
     # Datos recibidos desde el front
     username = request.data.get('email')
     email = request.data.get('email')
@@ -39,48 +70,38 @@ def registro_usuario(request):
     fecha_nacimiento = request.data.get('fecha_nacimiento')
     telefono = request.data.get('telefono')
 
-    try:        
-        # Primero llamamos al registro en /api/auth/registration/
-    
-        #response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data=request.data)
-        response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data={
-        'username': email,
-        'email': email,
-        'password1': password1,
-        'password2': password2,                
-        })
-    
-        #return Response({'success': False, 'message': 'Error: al agregar el usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:       
+        # Crea el usuario (tabla auth_user)        
+        user = User.objects.create_user(username=email, email=email, password=password1)
 
-        if response.status_code == 201:  # Registro exitoso
-            # Convertir el tipo de identificación a su ID
-            from .models import Personas, TiposIdentificacion
-            from django.contrib.auth.models import User
-            user = User.objects.get(email=email),
-                    
-            tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   #request.data['tipo_identificacion'])
-        
-            #return Response({'success': False, 'message': 'Error: Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Registrar la persona solo si el registro del usuario fue exitoso
-            persona = Personas.objects.create(
-                UserID=user[0],
-                Nombre=request.data['nombre'],
-                Apellido=request.data['apellido'],
-                Alias=request.data['alias'],
-                TipoIdentificacionID=tipo_identificacion_obj,
-                NroIdentificacion=request.data['numero_identificacion'],
-                FechaNacimiento=request.data['fecha_nacimiento'],
-                Telefono=request.data['telefono']
-            )
+        # Crea el registro en tabla auth_accountemailaddress        
+        email_address = EmailAddress.objects.create(
+            user=user,
+            email=email,
+            verified=False,  # Para que quede como NO verificado
+            primary=True
+        )
 
-            return Response({'success': True, 'message': 'Registro exitoso. Revisa tu correo para confirmar tu cuenta.'}, status=status.HTTP_201_CREATED)
-            
-            #return Response({'success': False, 'message': 'Error en el registro de datos personales.'}, status=status.HTTP_400_BAD_REQUEST)
-  
-        else:
-            # Si falla el registro del usuario
-            return Response({'success': False, 'message': 'Error general en el registro de usuario (status < > a 201).'}, status=response.status_code)
+        # Crear el token del usuario (tabla authtoken_token)        
+        token = Token.objects.create(user=user)        
+
+        # Obtiene el tipo de identificaciòn correspondiente al código recibido del front
+        tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   #request.data['tipo_identificacion'])
+    
+        persona = Personas.objects.create(
+            UserID=user,
+            Nombre=request.data['nombre'],
+            Apellido=request.data['apellido'],
+            Alias=request.data['alias'],
+            TipoIdentificacionID=tipo_identificacion_obj,
+            NroIdentificacion=request.data['numero_identificacion'],
+            FechaNacimiento=request.data['fecha_nacimiento'],
+            Telefono=request.data['telefono']
+        )
+
+        # ACA FALTA mandar el correo para verificaciòn del email!!!!!!!
+        return Response({'success': True, 'message': 'Registro exitoso. Revisa tu correo para confirmar tu cuenta.'}, status=status.HTTP_201_CREATED)
+          
 
     except Exception as e:
         # Si ocurre algún otro error en cualquier parte del proceso, la transacción se deshace
@@ -89,9 +110,31 @@ def registro_usuario(request):
     
 
 '''
+    CODIGO DESCARTADO
+
     except TiposIdentificacion.DoesNotExist:
         transaction.set_rollback(True)
         return Response({'success': False, 'message': 'Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST
+
+        # Primero llamamos al registro en /api/auth/registration/
+    
+        #response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data=request.data)
+        #response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data={
+        #'username': email,
+        ##'email': email,
+        #'password1': password1,
+        #'password2': password2,                
+        #})
+    
+        #user = User.objects.get(email=email),
+
+        #return Response({'success': False, 'message': 'Error: al agregar el usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #if response.status_code == 201:  # Registro exitoso
+            # Convertir el tipo de identificación a su ID
+
+     #return Response({'success': False, 'message': 'Error: Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST)           
+        
 '''
 
 
