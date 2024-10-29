@@ -1,19 +1,23 @@
 import requests
 from django.conf import settings
 from django.db import transaction  # Para asegurar atomicidad
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authtoken.models import Token        
+from rest_framework.authtoken.models import Token     
+from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
 from .models import Personas, TiposIdentificacion                
 
-
 @api_view(['POST'])
 def email_existe(request):
-    # verificar si el email recibido del front ya existe en BD  (cuando el usuario ingresa el email con el cual se va a registrar)    
+    # esta vista verificar si el email recibido del front ya existe en BD 
+    # (cuando el usuario ingresa el email con el cual se va a registrar)    
 
     # Recibe el email desde el request
     email = request.data.get('email')
@@ -51,9 +55,16 @@ def email_existe(request):
 def registro_usuario(request):
     # Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
 
-    '''Falta PROBAR y eventualmente corregir:
-      1) Datos no válidos como pass débiles, formato de fecha incorrecto, tipo de identificación inexistente, nombre vacíoy apellido
-      2) ver si la transacción hace rollback de todas las tablas ante un error
+    '''POSIBLES VALIDACIONES:
+      1) Datos no válidos como 
+         pass débiles                           >>> OK ("Contraseña débil: This password is too short. It must contain at least 8 characters., This password is too common., This password is entirely numeric.")
+         pass distintas                         >>> OK ("Las contraseñas no coinciden.")
+         formato de fecha incorrecto            >>> OK ("Error: ['“1980-13-08” value has the correct format (YYYY-MM-DD) but it is an invalid date.']")
+                                                     ó ("Error: ['“abc” value has an invalid date format. It must be in YYYY-MM-DD format.']")
+         tipo de identificación inexistente     >>> OK ("Error: TiposIdentificacion matching query does not exist.")
+         nombre y apellido vacío                >>> OK ("El nombre y el apellido no pueden estar vacíos.")
+         usr existente                          >>> OK ("Error: llave duplicada viola restricción de unicidad «auth_user_username_key»\nDETAIL:  Ya existe la llave (username)=(admin3@example.com).\n")
+      2) ver si la transacción hace rollback de todas las tablas ante un error  >>> OK
       2) Clasificar posibles mensajes de error a devolver al front
     '''
 
@@ -71,6 +82,34 @@ def registro_usuario(request):
     telefono = request.data.get('telefono')
 
     try:       
+
+       # Validación 1: Verificar que las contraseñas coincidan
+        if password1 != password2:
+            return Response({'success': False, 'message': 'Las contraseñas no coinciden.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validación 2: Verificar que la contraseña cumpla con los requisitos de seguridad
+        try:
+            validate_password(password1)
+        except ValidationError as password_error:
+            return Response({'success': False, 'message': f'Contraseña débil: {", ".join(password_error.messages)}'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validación 3: Campos requeridos no vacíos
+        if not nombre or not apellido:
+            return Response({'success': False, 'message': 'El nombre y el apellido no pueden estar vacíos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not numero_identificacion:
+            return Response({'success': False, 'message': 'El número de identificación no pueden estar vacío.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not fecha_nacimiento:
+            return Response({'success': False, 'message': 'La fecha de nacimiento no pueden estar vacía.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+               # Valida que el email sea un formato válido
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({'success': False, 'message': 'El formato del email es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            #raise DRFValidationError("El formato del email es inválido.")            
+
         # Crea el usuario (tabla auth_user)        
         user = User.objects.create_user(username=email, email=email, password=password1)
 
@@ -109,6 +148,24 @@ def registro_usuario(request):
         return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_groups(request):
+    user = request.user
+    groups = user.groups.all()  # Obtener los grupos a los que pertenece el usuario
+    group_names = [group.name for group in groups]
+    
+    return Response({
+        'pk': user.pk,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'groups': group_names  # Agregar los nombres de los grupos
+    })
+
+
 '''
     CODIGO DESCARTADO
 
@@ -138,22 +195,6 @@ def registro_usuario(request):
 '''
 
 
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_user_groups(request):
-    user = request.user
-    groups = user.groups.all()  # Obtener los grupos a los que pertenece el usuario
-    group_names = [group.name for group in groups]
-    
-    return Response({
-        'pk': user.pk,
-        'username': user.username,
-        'email': user.email,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'groups': group_names  # Agregar los nombres de los grupos
-    })
 
 
 '''
