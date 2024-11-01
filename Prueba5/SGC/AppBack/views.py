@@ -4,6 +4,7 @@ from django.db import transaction  # Para asegurar atomicidad
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
@@ -147,6 +148,25 @@ def registro_usuario(request):
         transaction.set_rollback(True)
         return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
+@api_view(['POST'])
+def login_usuario(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    user = authenticate(username=username, password=password)
+
+    if user is not None:
+        email_address = EmailAddress.objects.filter(user=user, email=username).first()
+        if email_address and email_address.verified:
+            return Response({'success': True, 'message': 'Inicio de sesión exitoso'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    else:
+        return Response({'success': False, 'message': 'Datos incorrectos'}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 @api_view(['GET'])

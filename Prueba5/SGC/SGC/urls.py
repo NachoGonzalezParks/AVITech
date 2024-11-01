@@ -32,7 +32,6 @@ from dj_rest_auth.views import PasswordResetView, PasswordResetConfirmView
 from django.contrib.auth import views as auth_views
 
 router = DefaultRouter()
-#router.register(r'tipos-identificacion', TipoIdentificacionViewSet, basename='tipoidentificacion')
 urlpatterns = [
     path('admin/', admin.site.urls),
     #path('', include('AppBack.urls')),  # Incluimos las URLs de AppBack
@@ -41,29 +40,10 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('api/auth/', include('dj_rest_auth.urls')),
     path('api/auth/registration/',include('dj_rest_auth.registration.urls')),
-    # path('api/auth/password/reset/', PasswordResetView.as_view(), name='password_reset'),
-    # path('api/auth/password/reset/confirm/<uidb64>/<token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),    
-    #path('api/welcome/', welcome_view, name='welcome'),
-    #path('', TemplateView.as_view(template_name='index.html')),
-    #path('api/', include(router.urls)),   
     path('', TemplateView.as_view(template_name='flutter_web/index.html')),
-    #path('api/auth/login/', login_view, name='login'), 
     path('auth/user/groups/', get_user_groups, name='get_user_groups'),
-    path(
-        'reset_password/', 
-        auth_views.PasswordResetView.as_view(
-            template_name='registration/password_reset_form.html',
-            email_template_name='registration/password_reset_email.html',
-            subject_template_name='registration/password_reset_subject.txt',
-            html_email_template_name='registration/password_reset_email.html',
-        ), 
-        name='password_reset'
-    ),
-    path('reset_password_send/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
-    path('reset/<uidb64>/<token>', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
-    #path('controlar_email/', views.controlar_usuario, name='controlar_usuario'),  # No utilizada aún
     path('registro/', views.registro_usuario, name='registro_usuario'),  
+    path('login/', views.login_usuario, name='login_usuario'),
     path('email_existe/', views.email_existe, name='email_existe'),  
 ]
 
