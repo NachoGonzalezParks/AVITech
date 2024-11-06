@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:appfront/widgets/navbar.dart';
-import 'package:appfront/widgets/footer.dart';
+import 'package:appfront/widgets/page_structure01.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -8,70 +7,63 @@ class LandingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    const double maxWidth = 400.0; // Set a max width for larger screens
 
-    return Scaffold(
-      appBar: NavBar(
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            child: Text('Login', style: TextStyle(color: colorScheme.onPrimary)),
+    return PageStructure01(
+      bodyContent: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const Text(
+            'Bienvenido a Zeus',
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/register');
-            },
-            child: Text('Register', style: TextStyle(color: colorScheme.onPrimary)),
+          const SizedBox(height: 20),
+          const Text(
+            'Gestiona tus canchas de manera eficiente con nuestra app. '
+            'Reserva, organiza y administra todas tus actividades deportivas desde un solo lugar.',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          Center(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width < maxWidth ? double.infinity : maxWidth,
+              ),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/register');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.secondary,
+                  foregroundColor: colorScheme.onSecondary,
+                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                ),
+                child: const Text('Descargar la App'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width < maxWidth ? double.infinity : maxWidth,
+              ),
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/login');
+                },
+                child: const Text('Iniciar Sesión'),
+              ),
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Sección de promoción
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Bienvenido a Zeus',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Gestiona tus canchas de manera eficiente con nuestra app. '
-                    'Reserva, organiza y administra todas tus actividades deportivas desde un solo lugar.',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[700], // Texto gris para detalles
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Acción para descargar app o más información
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.secondary, // Botón con color secundario (naranja)
-                      foregroundColor: colorScheme.onSecondary, // Texto sobre botón
-                      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                    ),
-                    child: const Text('Descargar la App'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: const FooterBar(),
     );
   }
 }

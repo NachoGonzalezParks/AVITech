@@ -1,9 +1,50 @@
+// File: widgets/navbar.dart
 import 'package:flutter/material.dart';
 
 class NavBar extends StatelessWidget implements PreferredSizeWidget {
-  final List<Widget> actions;
+  const NavBar({Key? key}) : super(key: key);
 
-  const NavBar({super.key, required this.actions});
+  List<Widget> _getActions(BuildContext context) {
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+
+    if (currentRoute == '/login') {
+      return [
+        TextButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/landing'),
+          child: const Text('Home', style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    } else if (currentRoute == '/register') {
+      return [
+        TextButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+          child: const Text('Login', style: TextStyle(color: Colors.white)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/landing'),
+          child: const Text('Home', style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    } else if (currentRoute == '/home') {
+      return [
+        TextButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/landing'),
+          child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    } else {
+      return [
+        TextButton(
+          onPressed: () => Navigator.pushNamed(context, '/login'),
+          child: const Text('Login', style: TextStyle(color: Colors.white)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pushNamed(context, '/register'),
+          child: const Text('Register', style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,43 +52,34 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: colorScheme.primary,
       elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white), // Back arrow icon
+        onPressed: () {
+          Navigator.maybePop(context); // Go back to the previous screen if possible
+        },
+      ),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo
+          // Center title
+        // Título alineado a la izquierda
           Expanded(
-            flex: 2, // Equivalente al 20% del ancho
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: Icon(Icons.menu), // Puedes reemplazar con tu logo
-                onPressed: () {
-                  // Acción del logo
-                },
-              ),
+            flex: 4,
+            child: Text(
+              'ZEUS',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              textAlign: TextAlign.left, // Alineación del texto a la izquierda
             ),
           ),
-          // Título en el centro
+          // Buttons on the right
           Expanded(
-            flex: 4, // Equivalente al 40% del ancho
-            child: Center(
-              child: Text(
-                'Zeus', // Tu texto del título
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // Color del texto
-                ),
-              ),
+            flex: 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: _getActions(context),
             ),
           ),
-          // Botones a la derecha (recibidos como parámetro)
-          Expanded(
-          flex: 2, // Equivalente al 40% del ancho
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: actions),
-          )],
+        ],
       ),
     );
   }
