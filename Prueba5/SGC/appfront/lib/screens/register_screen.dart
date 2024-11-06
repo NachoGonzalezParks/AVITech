@@ -104,6 +104,13 @@ class RegisterScreenState extends State<RegisterScreen> {
               String email = emailController.text;
               String password1 = password1Controller.text;
               String password2 = password2Controller.text;
+              String nombre = nombreController.text;
+              String apellido = apellidoController.text;
+              String alias = aliasController.text;
+              String tipoIdentificacion = tipoIdentificacionController.text;
+              String numeroIdentificacion = numeroIdentificacionController.text;
+              String fechaNacimiento = fechaNacimientoController.text;
+              String telefono = telefonoController.text;
 
               if (password1 != password2) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +120,7 @@ class RegisterScreenState extends State<RegisterScreen> {
               }
 
               var response = await Provider.of<ApiService>(context, listen: false)
-                  .register(email, password1, password2);
+                  .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono);
 
               if (!context.mounted) return;
 
