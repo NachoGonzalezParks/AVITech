@@ -34,8 +34,7 @@ from django.contrib.auth import views as auth_views
 router = DefaultRouter()
 #router.register(r'tipos-identificacion', TipoIdentificacionViewSet, basename='tipoidentificacion')
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    #path('', include('AppBack.urls')),  # Incluimos las URLs de AppBack
+    path('admin/', admin.site.urls),    
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('accounts/', include('allauth.urls')),
@@ -61,10 +60,10 @@ urlpatterns = [
     ),
     path('reset_password_send/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
-    #path('controlar_email/', views.controlar_usuario, name='controlar_usuario'),  # No utilizada aún
+    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),    
     path('registro/', views.registro_usuario, name='registro_usuario'),  
-    path('email_existe/', views.email_existe, name='email_existe'),  
+    path('email_existe/', views.email_existe, name='email_existe'),       
+    path('activacion/<str:uidb64>/<str:token>/', views.activacion, name='activacion'),
 ]
 
 

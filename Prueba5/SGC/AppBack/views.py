@@ -12,14 +12,23 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion                
+from .models import Personas, TiposIdentificacion      
+'''Agregados para envío y verif. de mail al registrarse'''          
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.template.loader import render_to_string
+from django.contrib.sites.shortcuts import get_current_site
+from .Tokens import account_activation_token    # Crear un token personalizado para verificación
 
+
+# Esta vista verificar si el email recibido del front ya existe en BD
+# (cuando el usuario ingresa el email con el cual se va a registrar) 
 @api_view(['POST'])
-def email_existe(request):
-    # esta vista verificar si el email recibido del front ya existe en BD 
-    # (cuando el usuario ingresa el email con el cual se va a registrar)    
+def email_existe(request):   
 
-    # Recibe el email desde el request
+    # Recibe el email desde el front
     email = request.data.get('email')
 
     # Verifica si el email ya está en uso
@@ -32,40 +41,22 @@ def email_existe(request):
         return Response({'existe': False}, status=status.HTTP_200_OK)
 
 
-
-    ''' JSON de ejemplo para probar registro_usuario
-    {
-    "email": "user@example.com",
-    "password1": "password123",
-    "password2": "password123",
-    "nombre": "Juan",
-    "apellido": "Pérez",
-    "alias": "jperez",
-    "tipo_identificacion": "DNI",
-    "numero_identificacion": "12345678",
-    "fecha_nacimiento": "1980-12-08",
-    "telefono": "543516932000"
-    }
-    '''
-
-
-
+# Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
 @api_view(['POST'])
 @transaction.atomic  # Garantiza que si algo falla, la transacción se deshace (rollback).
-def registro_usuario(request):
-    # Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
+def registro_usuario(request):    
 
-    '''POSIBLES VALIDACIONES:
+    '''DEVOLUCIONES AL FRONT:
       1) Datos no válidos como 
-         pass débiles                           >>> OK ("Contraseña débil: This password is too short. It must contain at least 8 characters., This password is too common., This password is entirely numeric.")
-         pass distintas                         >>> OK ("Las contraseñas no coinciden.")
-         formato de fecha incorrecto            >>> OK ("Error: ['“1980-13-08” value has the correct format (YYYY-MM-DD) but it is an invalid date.']")
-                                                     ó ("Error: ['“abc” value has an invalid date format. It must be in YYYY-MM-DD format.']")
-         tipo de identificación inexistente     >>> OK ("Error: TiposIdentificacion matching query does not exist.")
-         nombre y apellido vacío                >>> OK ("El nombre y el apellido no pueden estar vacíos.")
-         usr existente                          >>> OK ("Error: llave duplicada viola restricción de unicidad «auth_user_username_key»\nDETAIL:  Ya existe la llave (username)=(admin3@example.com).\n")
-      2) ver si la transacción hace rollback de todas las tablas ante un error  >>> OK
-      2) Clasificar posibles mensajes de error a devolver al front
+         pass débiles                           >>> ("Contraseña débil: This password is too short. It must contain at least 8 characters., This password is too common., This password is entirely numeric.")
+         pass distintas                         >>> ("Las contraseñas no coinciden.")
+         formato de fecha incorrecto            >>> ("Error: ['“1980-13-08” value has the correct format (YYYY-MM-DD) but it is an invalid date.']")
+                                                  ó ("Error: ['“abc” value has an invalid date format. It must be in YYYY-MM-DD format.']")
+         tipo de identificación inexistente     >>> ("Error: TiposIdentificacion matching query does not exist.")
+         nombre y apellido vacío                >>> ("El nombre y el apellido no pueden estar vacíos.")
+         usrusuario existente                   >>> ("Error: llave duplicada viola restricción de unicidad «auth_user_username_key»\nDETAIL:  Ya existe la llave (username)=(admin3@example.com).\n")
+         envío de mail                          >>> ("Error: account/acc_active_email.html"})
+      2) Ante un error luego e las validaciones hace rollback de todas las tablas y devuleve el msg (varía de acuerdo al error que lo provocó)      
     '''
 
     # Datos recibidos desde el front
@@ -103,7 +94,7 @@ def registro_usuario(request):
         if not fecha_nacimiento:
             return Response({'success': False, 'message': 'La fecha de nacimiento no pueden estar vacía.'}, status=status.HTTP_400_BAD_REQUEST)
         
-               # Valida que el email sea un formato válido
+        # Validación 4: Verifica que el email tenga un formato válido
         try:
             validate_email(email)
         except ValidationError:
@@ -125,7 +116,7 @@ def registro_usuario(request):
         token = Token.objects.create(user=user)        
 
         # Obtiene el tipo de identificaciòn correspondiente al código recibido del front
-        tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   #request.data['tipo_identificacion'])
+        tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   
     
         persona = Personas.objects.create(
             UserID=user,
@@ -138,17 +129,45 @@ def registro_usuario(request):
             Telefono=request.data['telefono']
         )
 
-        # ACA FALTA mandar el correo para verificaciòn del email!!!!!!!
-        return Response({'success': True, 'message': 'Registro exitoso. Revisa tu correo para confirmar tu cuenta.'}, status=status.HTTP_201_CREATED)
+        # Enviar email para requerir verificación de la cuenta
+        # Ej . Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
+        current_site = get_current_site(request)   # seteado en http://localhost:8000/admin/sites
+        mail_subject = 'Activa tu cuenta en Zeus.com'                       
+        message = render_to_string('mail_activacion.html', {
+            'user': persona,
+            'domain': current_site.domain,
+            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+            'token': account_activation_token.make_token(user),
+        })
+        send_mail(mail_subject, message, 'noreply@zeus.com', [email])  
+        print(message)   # Para verificar en consola, sacar    
+        
+        return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta. {message}'}, status=status.HTTP_201_CREATED)
           
-
     except Exception as e:
         # Si ocurre algún otro error en cualquier parte del proceso, la transacción se deshace
         transaction.set_rollback(True)
         return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+# Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta (EmailAddress.verified = True)
+@api_view(['GET'])
+def activacion(request, uidb64, token):
+    try:
+        uid = force_bytes(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and account_activation_token.check_token(user, token):
+        email_address = EmailAddress.objects.get(user=user)
+        email_address.verified = True
+        email_address.save()
+        return Response({'success': True, 'message': 'Cuenta activada correctamente.'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'success': False, 'message': 'El link de activación es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# Esta vista obtiene los grupos a los que pertenece el usuario
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_groups(request):
@@ -165,248 +184,3 @@ def get_user_groups(request):
         'groups': group_names  # Agregar los nombres de los grupos
     })
 
-
-'''
-    CODIGO DESCARTADO
-
-    except TiposIdentificacion.DoesNotExist:
-        transaction.set_rollback(True)
-        return Response({'success': False, 'message': 'Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST
-
-        # Primero llamamos al registro en /api/auth/registration/
-    
-        #response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data=request.data)
-        #response = requests.post(f"{settings.BASE_URL}/api/auth/registration/", data={
-        #'username': email,
-        ##'email': email,
-        #'password1': password1,
-        #'password2': password2,                
-        #})
-    
-        #user = User.objects.get(email=email),
-
-        #return Response({'success': False, 'message': 'Error: al agregar el usuario.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        #if response.status_code == 201:  # Registro exitoso
-            # Convertir el tipo de identificación a su ID
-
-     #return Response({'success': False, 'message': 'Error: Tipo de Identificación no válido.'}, status=status.HTTP_400_BAD_REQUEST)           
-        
-'''
-
-
-
-
-'''
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def login_view(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
-
-    # Autenticamos utilizando el email
-    user = authenticate(username=email, password=password)
-
-    if user is not None:
-        # Genera el token JWT
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'groups': [group.name for group in user.groups.all()],
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-'''
-
-'''
-from django.shortcuts import render, redirect
-from django.views import View
-#from .models import TiposIdentificacion
-#from .Forms import TipoIdentificacionForm
-#from .models import TiposIdentificacion
-#from .serializers import TiposIdentificacionSerializer
-from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
-
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, get_user_model
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.authtoken.models import Token
-from .serializers import UserSerializer
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def login_view(request):
-    usuario = request.data.get('email')  # agregado
-    email = request.data.get('email')
-    password = request.data.get('password')
-
-    # Autenticamos utilizando el email como username
-    # user = authenticate(request, username=email, password=password)
-    #user = authenticate(request, username=usuario, email=email, password=password) # Agregado    
-
-    user =  get_user_model()
-
-    try:
-        user = user.objects.get(email=email)
-    except user.DoesNotExist:
-        return Response({'error': 'User with this email does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-    
-    if not user.check_password(password):
-        return Response({'error': 'Incorrect password.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-    if user is not None:
-        token, created = Token.objects.get_or_create(user=user)
-        user_data = UserSerializer(user).data
-
-        # Devuelve el token y la información del usuario correctamente estructurada
-        return Response({
-            'token': token.key,  # El token del usuario
-            'first_name': user.first_name,  # Primer nombre
-            'last_name': user.last_name,    # Apellido
-            'groups': [group.name for group in user.groups.all()]  # Grupos del usuario
-        }, status=status.HTTP_200_OK)    
-    else:
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
-
-###
-'''
-'''
-@api_view(['POST'])
-def login_view(request):
-    usuario = request.data.get('email')
-    email = request.data.get('email')
-    password = request.data.get('password')
-    
-    user = authenticate(request, username=usuario, email=email, password=password)
-    
-    if user is not None:
-        token, created = Token.objects.get_or_create(user=user)
-        
-        # Obtener grupos del usuario
-        groups = user.groups.values_list('name', flat=True)
-        user_data = UserSerializer(user).data
-        return Response({
-                    'token': token.key,
-                    'user': user_data
-                }, status=status.HTTP_200_OK)
-        
-        #return Response({
-        #    'token': token.key,
-        #    'user_id': user.pk,
-        #    'email': user.email,
-        #    'first_name': user.first_name,
-        #    'last_name': user.last_name,
-        #    'groups': list(groups)
-        #}, status=status.HTTP_200_OK)
-        
-    else:
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
-    
-   ''' 
-'''
-class TipoIdentificacionViewSet(viewsets.ModelViewSet):
-    queryset = TiposIdentificacion.objects.all()
-    serializer_class = TiposIdentificacionSerializer
-
-
-# Create your views here.
-# Function-based view para home y Pagina2
-
-def home(request):
-    return render(request, 'Pagina1.html')
-
-def pagina2(request):    
-    return render(request, 'Pagina2.html')
-
-# Class-based view para Pagina3
-class Pagina3View(View):
-    def get(self, request):
-        return render(request, 'Pagina3.html')
-    
-
-
-# Vista para Pagina4.html
-def pagina4(request):
-    tipos_identificacion = TiposIdentificacion.objects.all()
-    return render(request, 'pagina4.html', {'tipos_identificacion': tipos_identificacion})
-
-# Vista para Pagina5.html
-def pagina5(request):
-    if request.method == 'POST':
-        form = TipoIdentificacionForm(request.POST)
-        if form.is_valid():
-            form.save()            
-            return redirect('pagina4')
-    else:
-        form = TipoIdentificacionForm()
-    return render(request, 'pagina5.html', {'form': form})    
-    
-
-def modificar_tipo(request, pk):
-    tipo = get_object_or_404(TiposIdentificacion, pk=pk)
-    if request.method == 'POST':
-        form = TipoIdentificacionForm(request.POST, instance=tipo)
-        if form.is_valid():
-            form.save()
-            return redirect('pagina4')
-    else:
-        form = TipoIdentificacionForm(instance=tipo)
-    return render(request, 'Pagina6.html', {'form': form})
-
-def eliminar_tipo(request, pk):
-    tipo = get_object_or_404(TiposIdentificacion, pk=pk)
-    if request.method == 'POST':
-        tipo.delete()
-        return redirect('pagina4')
-    
-
-Resumen de diferencias entre Function (Pagina1) views y Class-based views (Pagina2)
-------------------------------------------------------------------------------------
-Las Class-Based Views (CBVs) en Django proporcionan una forma más estructurada y orientada a objetos para manejar vistas, 
-en comparación con las Function-Based Views (FBVs). 
-CBVs permiten reutilizar código y seguir patrones de diseño como la herencia y la encapsulación, 
-lo cual facilita la extensión y personalización de la funcionalidad de las vistas.
-
-Diferencias clave y consideraciones
-Modularidad y Reutilización:
-CBVs: Facilitan la reutilización de código mediante herencia de clases y mixins. 
-      Puedes crear clases base con funcionalidad común y especializar vistas para casos específicos.
-FBVs: El código es más explícito y a menudo está todo en una sola función, lo que puede llevar a duplicación de código 
-      si se requieren comportamientos similares en diferentes vistas.
-
-Organización del Código:
-CBVs: Organizan el código en métodos de una clase, lo que puede hacer que las vistas sean más fáciles de mantener y entender, 
-      especialmente en aplicaciones grandes. Métodos como get(), post(), get_context_data(), y form_valid() se utilizan 
-      para manejar lógica específica de la vista.
-FBVs: Tienen una estructura más simple, siendo una función que maneja la solicitud y devuelve una respuesta. 
-      Toda la lógica está contenida dentro de la misma función.
-
-Extensibilidad:
-CBVs: Son fácilmente extensibles. Puedes crear mixins para añadir funcionalidad específica y reutilizable en múltiples vistas. 
-      Por ejemplo, un mixin de autenticación que garantice que solo los usuarios autenticados pueden acceder a ciertas vistas.
-FBVs: Requieren escribir la lógica directamente en la función o utilizar decoradores para agregar funcionalidad adicional.
-
-Simplicidad vs. Abstracción:
-CBVs: Pueden tener una curva de aprendizaje más pronunciada debido a su mayor nivel de abstracción. 
-      Sin embargo, una vez comprendidos, pueden hacer que el desarrollo sea más eficiente.
-FBVs: Son más directas y fáciles de entender para los desarrolladores nuevos en Django, ya que se ajustan al paradigma tradicional de las funciones.
-'''
