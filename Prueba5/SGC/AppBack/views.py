@@ -22,6 +22,8 @@ from django.utils.encoding import force_bytes, force_str
 from django.template.loader import render_to_string
 from django.contrib.sites.shortcuts import get_current_site
 from .Tokens import account_activation_token    # Crear un token personalizado para verificación
+from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.exceptions import AuthenticationFailed
 
 
 # Esta vista verificar si el email recibido del front ya existe en BD
@@ -44,7 +46,7 @@ def email_existe(request):
 
 # Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
 @api_view(['POST'])
-@transaction.atomic  # Garantiza que si algo falla, la transacción se deshace (rollback).
+@transaction.atomic  
 def registro_usuario(request):    
 
     '''DEVOLUCIONES AL FRONT:
@@ -74,18 +76,14 @@ def registro_usuario(request):
     telefono = request.data.get('telefono')
 
     try:       
-
-       # Validación 1: Verificar que las contraseñas coincidan
         if password1 != password2:
             return Response({'success': False, 'message': 'Las contraseñas no coinciden.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validación 2: Verificar que la contraseña cumpla con los requisitos de seguridad
+
         try:
             validate_password(password1)
         except ValidationError as password_error:
             return Response({'success': False, 'message': f'Contraseña débil: {", ".join(password_error.messages)}'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validación 3: Campos requeridos no vacíos
+
         if not nombre or not apellido:
             return Response({'success': False, 'message': 'El nombre y el apellido no pueden estar vacíos.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -94,29 +92,23 @@ def registro_usuario(request):
 
         if not fecha_nacimiento:
             return Response({'success': False, 'message': 'La fecha de nacimiento no pueden estar vacía.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validación 4: Verifica que el email tenga un formato válido
+
         try:
             validate_email(email)
         except ValidationError:
             return Response({'success': False, 'message': 'El formato del email es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
-            #raise DRFValidationError("El formato del email es inválido.")            
-
-        # Crea el usuario (tabla auth_user)        
+       
+      
         user = User.objects.create_user(username=email, email=email, password=password1)
-
-        # Crea el registro en tabla auth_accountemailaddress        
+      
         email_address = EmailAddress.objects.create(
             user=user,
             email=email,
-            verified=False,  # Para que quede como NO verificado
+            verified=False,
             primary=True
         )
-
-        # Crear el token del usuario (tabla authtoken_token)        
+     
         token = Token.objects.create(user=user)        
-
-        # Obtiene el tipo de identificaciòn correspondiente al código recibido del front
         tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   
     
         persona = Personas.objects.create(
@@ -130,6 +122,9 @@ def registro_usuario(request):
             Telefono=request.data['telefono']
         )
 
+        admin_group = Group.objects.get(name="Administrador")
+        user.groups.add(admin_group)
+
         # Enviar email para requerir verificación de la cuenta
         # Ej . Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
         current_site = get_current_site(request)   # seteado en http://localhost:8000/admin/sites
@@ -140,15 +135,14 @@ def registro_usuario(request):
             'uid': urlsafe_base64_encode(force_bytes(user.pk)),
             'token': account_activation_token.make_token(user),
         })
-        send_mail(mail_subject, message, 'noreply@zeus.com', [email])  
-        print(message)   # Para verificar en consola, sacar    
+        send_mail(mail_subject, message, 'noreply@zeus.com', [email])    
         
         return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta. {message}'}, status=status.HTTP_201_CREATED)
           
     except Exception as e:
-        # Si ocurre algún otro error en cualquier parte del proceso, la transacción se deshace
         transaction.set_rollback(True)
         return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta (EmailAddress.verified = True)
 @api_view(['GET'])
@@ -167,29 +161,46 @@ def activacion(request, uidb64, token):
     else:
         return Response({'success': False, 'message': 'El link de activación es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+# Esta vista recibe el mail y la contraseña, y si los datos son correctos logguea al usuario
 @api_view(['POST'])
 def login_usuario(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
+    try:
+        username = request.data.get('username')
+        password = request.data.get('password')
 
-    user = authenticate(username=username, password=password)
+        if not username or not password:
+            return Response({'success': False, 'message': 'Nombre de usuario y contraseña son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if user is not None:
-        email_address = EmailAddress.objects.filter(user=user, email=username).first()
+        user = authenticate(username=username, password=password)
         
-        if email_address and email_address.verified:
-            login(request, user)
-            response = get_user_groups(user)
-            return response
+        if user is None:
+            raise AuthenticationFailed('Datos incorrectos')
 
-        else:
+        try:
+            email_address = EmailAddress.objects.get(user=user, email=username)
+        except ObjectDoesNotExist:
+            return Response({'success': False, 'message': 'No se encontró una cuenta asociada a este correo.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if not email_address.verified:
             return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
-    else:
-        return Response({'success': False, 'message': 'Datos incorrectos'}, status=status.HTTP_400_BAD_REQUEST)
+
+        login(request, user)
+        response = get_user_groups(user)
+        return response
 
 
+    except AuthenticationFailed as e:
+        return Response({'success': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    except ObjectDoesNotExist as e:
+        return Response({'success': False, 'message': 'No se pudo encontrar el objeto solicitado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({'success': False, 'message': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# Esta función devuelve la información del usuario
 def get_user_groups(user):
     groups = user.groups.all()
     group_names = [group.name for group in groups]
