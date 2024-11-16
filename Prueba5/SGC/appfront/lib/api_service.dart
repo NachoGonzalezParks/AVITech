@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService extends ChangeNotifier {
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String baseUrl = 'http://127.0.0.1:8000/';
   
   bool _isLoading = false;
 
@@ -17,20 +17,25 @@ class ApiService extends ChangeNotifier {
   Future<Map<String, dynamic>> login(String email, String password) async {
     _setLoading(true);
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/login/'),
+      Uri.parse('$baseUrl/login/'),
       body: {
-        'email': email,
+        'username': email,
         'password': password,
       },
     );
     _setLoading(false);
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
+    // Decodificar la respuesta JSON
+    final responseBody = json.decode(response.body);
+
+    // Verificar si la clave 'success' es true
+    if (responseBody['success'] == true) {
+      return responseBody; // Respuesta exitosa
     } else {
+      // Si hay un error, devuelve el mensaje de error del servidor
       return {
         'success': false,
-        'message': 'Failed to login (en Api_service)',
+        'message': responseBody['message'] ?? 'Error al iniciar sesión.',
       };
     }
   }

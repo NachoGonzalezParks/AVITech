@@ -51,20 +51,25 @@ class LoginScreenState extends State<LoginScreen> {
 
               if (!context.mounted) return;
 
-              if (response['key'] != null) {
-                String token = response['key'];
-                var userDetails = await Provider.of<ApiService>(currentContext, listen: false).getUserDetails(token);
+              if (response['success']) {
+
+                  var userDetails = {
+                    'first_name': response['first_name'],
+                    'last_name': response['last_name'],
+                    'username': response['username'],
+                    'email': response['email'],
+                    'groups': response['groups'],
+                  };
+                
                 Navigator.pushReplacementNamed(
                   currentContext,
                   '/home',
-                  arguments: {
-                    'first_name': userDetails['first_name'],
-                    'last_name': userDetails['last_name'],
-                  },
+                  arguments: userDetails,
                 );
               } else {
+                // Si hay un error, muestra el mensaje del error
                 messenger.showSnackBar(
-                  const SnackBar(content: Text('Error de inicio de sesión (algo salió mal)')),
+                  SnackBar(content: Text(response['message'])),
                 );
               }
             },
