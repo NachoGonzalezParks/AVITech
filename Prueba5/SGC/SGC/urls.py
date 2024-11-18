@@ -44,7 +44,9 @@ urlpatterns = [
     path('email_existe/', views.email_existe, name='email_existe'),  
     path('registro/', views.registro_usuario, name='registro_usuario'),      
     path('activacion/<str:uidb64>/<str:token>/', views.activacion, name='activacion'),    
+    path('reset/<str:uidb64>/<str:token>/', views.nuevo_pass, name='nuevo_pass'),    
     path('login/', views.login_usuario, name='login_usuario'),
+    path('mail_password_reset/', views.mail_password_reset, name='mail_password_reset'),   
     
 ]
 
