@@ -171,7 +171,13 @@ def login_usuario(request):
 
         login(request, user)
         response = get_user_groups(user)
-        return response
+        if 'Administrador_de_torneo' in response.data['groups']:
+            if verificar_pago(user):
+                return response
+            else:
+                return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)    
+        else:  
+            return response
 
 
     except AuthenticationFailed as e:
@@ -200,9 +206,9 @@ def get_user_groups(user):
         'groups': group_names
     })
 
-# Esta vista recibe un email del front y le envía un link para reestablecer la contraseña (Ha olvidado su contraseña?)
 @api_view(['POST'])
 def mail_password_reset(request):
+    # Esta vista recibe un email del front y  envía un link a ese mail para reestablecer la contraseña (Ha olvidado su contraseña?)
     email = request.data.get("email")
     user = get_object_or_404(User, email=email)
     persona = get_object_or_404(Personas, UserID=user)
@@ -215,11 +221,12 @@ def mail_password_reset(request):
         "message": "Se ha enviado un correo para restablecer la contraseña."
     }, status=200)
 
-# Esta vista crea un link y lo envía por mail
 def enviar_email_enlace(usuario, persona, tipo, request):
-    
-    #Ej . Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
-    #current_site = get_current_site(request)   # seteado en http://localhost:8000/admin/sites
+    # Esta vista crea un link y lo envía por mail    
+    # Sirve para "activacion" y para "reset"
+
+    #Ej. Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
+    #current_site = get_current_site(request) está seteado en http://localhost:8000/admin/sites
     
     try:
         email = usuario.email
@@ -246,9 +253,13 @@ def enviar_email_enlace(usuario, persona, tipo, request):
         # Opcional: lanza una excepción personalizada para manejarla en la vista
         raise Exception("Error al enviar el enlace por email.") from e
 
-# Esta vista reestablece la contraseña (FALTA VERIFICAR FUNCIONAMIENTO)
 @api_view(['POST'])
 def nuevo_pass(request, uidb64, token):
+    # Esta vista reestablece la contraseña 
+    # debe recibir new_password (ingresado por el usuario), uidb64 y token (contenidos en el link enviado al mail)
+    # Ej. link = http://localhost:8000/reset/MTAw/cgp283-4c9040bae0afb89deb10f8734922e823/
+    #  uidb64 = MTAw  (corresponde al id 10 de la tabla auth_user)
+    #  token  = cgp283-4c9040bae0afb89deb10f8734922e823
     try:
         uid = urlsafe_base64_decode(uidb64).decode()
         user = User.objects.get(pk=uid)
@@ -265,3 +276,7 @@ def nuevo_pass(request, uidb64, token):
             return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (token no reconocido)."}, status=400)
     else:
         return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (usuario incorrecto)."}, status=400)
+
+def verificar_pago(user):
+    # Falta la funcionalidad...
+    return True
