@@ -1,18 +1,6 @@
 // FLUTTER
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// API_SERVICE
-// import 'package:appfront/data/repositories/api_service.dart';
-// ROUTER
-// import 'routes/app_routes.dart';
-// THEME
-// import 'themes/app_theme.dart';
-// SCREENS
-// imports?
-
-// void main() => runApp(MaterialApp(
-  
-// ))
 
 // ARRANQUE DE LA APP
 void main() {
