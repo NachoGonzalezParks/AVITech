@@ -172,7 +172,7 @@ def login_usuario(request):
         if not username or not password:
             return Response({'success': False, 'message': 'Nombre de usuario y contraseña son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = authenticate(username=username, password=password)
+        user = authenticate(email=username, password=password)
         
         if user is None:
             raise AuthenticationFailed('Datos incorrectos')
@@ -207,7 +207,7 @@ def get_user_groups(user):
     
     return Response({
         'success': True,
-        'message': 'Inicio de sesión exitoso.',
+        'message': 'Sesión iniciada correctamente.',
         'pk': user.pk,
         'username': user.username,
         'email': user.email,
@@ -215,4 +215,5 @@ def get_user_groups(user):
         'last_name': user.last_name,
         'groups': group_names
     })
+
 
