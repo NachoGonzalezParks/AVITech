@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:appfront/data/repositories/api_service.dart';
 import 'package:appfront/core/constants/app_structure.dart';
 import 'package:appfront/core/widgets/custom_text_field.dart';
+import 'package:appfront/core/widgets/custom_dropdown.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -19,10 +20,18 @@ class RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController nombreController = TextEditingController();
   final TextEditingController apellidoController = TextEditingController();
   final TextEditingController aliasController = TextEditingController();
-  final TextEditingController tipoIdentificacionController = TextEditingController();
   final TextEditingController numeroIdentificacionController = TextEditingController();
   final TextEditingController fechaNacimientoController = TextEditingController();
   final TextEditingController telefonoController = TextEditingController();
+
+  // Opciones para el campo tipoIdentificacion
+  final List<String> tipoIdentificacionOptions = [
+    'DNI',
+    'RUC',
+    'Pasaporte',
+  ];
+
+  String? selectedTipoIdentificacion;
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +68,16 @@ class RegisterScreenState extends State<RegisterScreen> {
             controller: aliasController,
             labelText: 'Alias',
           ),
-          CustomTextField(
-            controller: tipoIdentificacionController,
+          // Utilizamos el widget CustomDropdown
+          CustomDropdown(
             labelText: 'Tipo de identificación',
+            options: tipoIdentificacionOptions,
+            value: selectedTipoIdentificacion,
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedTipoIdentificacion = newValue;
+              });
+            },
           ),
           CustomTextField(
             controller: numeroIdentificacionController,
@@ -107,7 +123,7 @@ class RegisterScreenState extends State<RegisterScreen> {
               String nombre = nombreController.text;
               String apellido = apellidoController.text;
               String alias = aliasController.text;
-              String tipoIdentificacion = tipoIdentificacionController.text;
+              String tipoIdentificacion = selectedTipoIdentificacion ?? '';
               String numeroIdentificacion = numeroIdentificacionController.text;
               String fechaNacimiento = fechaNacimientoController.text;
               String telefono = telefonoController.text;
@@ -119,7 +135,8 @@ class RegisterScreenState extends State<RegisterScreen> {
                 return;
               }
 
-              var response = await Provider.of<ApiService>(context, listen: false)
+              var currentContext = context;
+              var response = await Provider.of<ApiService>(currentContext, listen: false)
                   .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono);
 
               if (!context.mounted) return;
