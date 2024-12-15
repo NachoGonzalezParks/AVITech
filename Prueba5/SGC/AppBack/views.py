@@ -141,7 +141,7 @@ def registro_usuario(request):
           
     except Exception as e:
         transaction.set_rollback(True)
-        return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'success': False, 'message': f'Error esto: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta (EmailAddress.verified = True)

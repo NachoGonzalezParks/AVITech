@@ -10,7 +10,7 @@ class AppStructure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const NavBar(), // Simply add NavBar without actions parameter
+      appBar: const NavBar(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

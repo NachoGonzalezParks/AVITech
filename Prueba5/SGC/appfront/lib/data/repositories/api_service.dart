@@ -60,14 +60,7 @@ class ApiService extends ChangeNotifier {
   Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono) async {
     _setLoading(true);
     final response = await http.post(
-      /*
-      Uri.parse('$baseUrl/auth/registration/'),
-      body: {
-        'email': email,
-        'password1': password1,
-        'password2': password2,
-      },
-      */
+
       Uri.parse('$baseUrl/registro/'),
       body: {
         'email': email,
@@ -84,6 +77,8 @@ class ApiService extends ChangeNotifier {
 
     );
     _setLoading(false);
+
+    print(response);
 
     if (response.statusCode == 200) {
       return json.decode(response.body);
