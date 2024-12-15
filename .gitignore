@@ -4,3 +4,4 @@
 /Prueba5/entorno_SGC
 /Prueba5/SGC/AppBack/__pycache__
 /Prueba5/SGC/django_debug.log
+*.pyc
