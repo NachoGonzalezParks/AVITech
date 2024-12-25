@@ -169,27 +169,22 @@ def login_usuario(request):
         if not email_address.verified:
             return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-
+        # Obtén la respuesta de los grupos de usuario
         response = get_user_groups(user)
+        
         if 'Administrador' in response.data['groups']:
             if verificar_pago(user):
                 try:
                     # Loguear usuario
-                    creado = marcar_login('logguear', response.data['pk'], response.data['email'])
-                    if creado:
-                        return response
-                    elif not creado:
-                        return Response({'success': False, 'message': 'El usuario ya estaba logueado.'}, status=status.HTTP_400_BAD_REQUEST)
-
+                    marcar_login('logguear', response.data['pk'], response.data['email'])
                 except RuntimeError as e:
                     return Response({'success': False, 'message': f'Error al loguear: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             else:
                 return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)
-    
-        else:  
-            return response
-
+        
+        # Independientemente de que esté logueado o no, siempre se devuelve la respuesta
+        return response
 
     except AuthenticationFailed as e:
         return Response({'success': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
