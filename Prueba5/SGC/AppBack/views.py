@@ -4,7 +4,7 @@ from django.db import transaction  # Para asegurar atomicidad
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion                
+from .models import Personas, TiposIdentificacion, LoginPersona              
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -169,13 +169,24 @@ def login_usuario(request):
         if not email_address.verified:
             return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        login(request, user)
+
         response = get_user_groups(user)
-        if 'Administrador_de_torneo' in response.data['groups']:
+        if 'Administrador' in response.data['groups']:
             if verificar_pago(user):
-                return response
+                try:
+                    # Loguear usuario
+                    creado = marcar_login('logguear', response.data['pk'], response.data['email'])
+                    if creado:
+                        return response
+                    elif not creado:
+                        return Response({'success': False, 'message': 'El usuario ya estaba logueado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                except RuntimeError as e:
+                    return Response({'success': False, 'message': f'Error al loguear: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             else:
-                return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)    
+                return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)
+    
         else:  
             return response
 
@@ -205,6 +216,26 @@ def get_user_groups(user):
         'last_name': user.last_name,        
         'groups': group_names
     })
+
+def marcar_login(accion, id, email):
+    try:
+        if accion == 'logguear':
+            # Agregar o verificar existencia de la persona
+            persona, creada = LoginPersona.objects.get_or_create(id=id, mail=email)
+            return creada  # True si la persona fue creada, False si ya existía
+
+        elif accion == 'deslogguear':
+            # Intentar eliminar el registro
+            deleted, _ = LoginPersona.objects.filter(id=id, mail=email).delete()
+            return deleted  # Número de filas eliminadas (1 si se eliminó, 0 si no se encontró)
+
+        else:
+            raise ValueError("Acción no válida. Usa 'logguear' o 'deslogguear'.")
+
+    except Exception as e:
+        raise RuntimeError(f"Error al realizar la acción {accion}: {str(e)}")
+
+
 
 @api_view(['POST'])
 def mail_password_reset(request):

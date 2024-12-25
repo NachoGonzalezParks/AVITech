@@ -24,3 +24,16 @@ class Personas(models.Model):
 
     def __str__(self):
         return f"{self.Nombre} {self.Alias} {self.Apellido} "
+
+
+class LoginPersona(models.Model):
+    id = models.IntegerField(primary_key=True) 
+    mail = models.EmailField(unique=True, max_length=255) 
+
+    def __str__(self):
+        return self.mail
+
+    class Meta:
+        db_table = 'login_personas' 
+        verbose_name = 'Persona Login'
+        verbose_name_plural = 'Personas Login'

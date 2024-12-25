@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class NavBar extends StatelessWidget implements PreferredSizeWidget {
-  const NavBar({Key? key}) : super(key: key);
+  const NavBar({super.key});
 
   List<Widget> _getActions(BuildContext context) {
     final currentRoute = ModalRoute.of(context)?.settings.name;
