@@ -13,8 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion      
-'''Agregados para envío y verif. de mail al registrarse'''          
+from .models import Personas, TiposIdentificacion                
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -24,45 +23,37 @@ from django.contrib.sites.shortcuts import get_current_site
 from .Tokens import account_activation_token    # Crear un token personalizado para verificación
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import AuthenticationFailed
+from django.contrib.auth.tokens import default_token_generator
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.contrib.auth.hashers import make_password
+import logging
+logger = logging.getLogger(__name__)
 
 
-# Esta vista verificar si el email recibido del front ya existe en BD
-# (cuando el usuario ingresa el email con el cual se va a registrar) 
 @api_view(['POST'])
 def email_existe(request):   
-
-    # Recibe el email desde el front
+    # Esta vista verificar si el email recibido del front ya existe en BD
+    # (cuando el usuario ingresa el email con el cual se va a registrar) 
+    
     email = request.data.get('email')
 
     # Verifica si el email ya está en uso
     email_existe = User.objects.filter(email=email).exists() or User.objects.filter(username=email).exists()
 
-    # Devuelve true si el email existe, false si está disponible
+    # Devuelve true si el email Existe, false si está Disponible (puede usarlo para registrarse)
     if email_existe:
         return Response({'existe': True}, status=status.HTTP_200_OK)
     else:
         return Response({'existe': False}, status=status.HTTP_200_OK)
 
 
-# Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
 @api_view(['POST'])
 @transaction.atomic  
-def registro_usuario(request):    
-
-    '''DEVOLUCIONES AL FRONT:
-      1) Datos no válidos como 
-         pass débiles                           >>> ("Contraseña débil: This password is too short. It must contain at least 8 characters., This password is too common., This password is entirely numeric.")
-         pass distintas                         >>> ("Las contraseñas no coinciden.")
-         formato de fecha incorrecto            >>> ("Error: ['“1980-13-08” value has the correct format (YYYY-MM-DD) but it is an invalid date.']")
-                                                  ó ("Error: ['“abc” value has an invalid date format. It must be in YYYY-MM-DD format.']")
-         tipo de identificación inexistente     >>> ("Error: TiposIdentificacion matching query does not exist.")
-         nombre y apellido vacío                >>> ("El nombre y el apellido no pueden estar vacíos.")
-         usrusuario existente                   >>> ("Error: llave duplicada viola restricción de unicidad «auth_user_username_key»\nDETAIL:  Ya existe la llave (username)=(admin3@example.com).\n")
-         envío de mail                          >>> ("Error: account/acc_active_email.html"})
-      2) Ante un error luego e las validaciones hace rollback de todas las tablas y devuleve el msg (varía de acuerdo al error que lo provocó)      
-    '''
-
-    # Datos recibidos desde el front
+def registro_usuario(request):   
+    # Esta vista crea un nuevo usuario y envía el mail de verificación 
+    # Debe recibir: email, password1, password2, nombre, apellido, tipo_identificacion, numero_identificacion, fecha_nacimiento
+    #   opcionales: alias, telefono       
     username = request.data.get('email')
     email = request.data.get('email')
     password1 = request.data.get('password1')
@@ -122,31 +113,24 @@ def registro_usuario(request):
             Telefono=request.data['telefono']
         )
 
-        admin_group = Group.objects.get(name="Administrador")
+        admin_group = Group.objects.get(name="Administrador_de_torneo")
         user.groups.add(admin_group)
 
         # Enviar email para requerir verificación de la cuenta
-        # Ej . Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
-        current_site = get_current_site(request)   # seteado en http://localhost:8000/admin/sites
-        mail_subject = 'Activa tu cuenta en Zeus.com'                       
-        message = render_to_string('mail_activacion.html', {
-            'user': persona,
-            'domain': current_site.domain,
-            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-            'token': account_activation_token.make_token(user),
-        })
-        send_mail(mail_subject, message, 'noreply@zeus.com', [email])    
+        enviar_email_enlace(usuario=user, persona=persona, tipo='activacion', request=request) 
         
-        return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta. {message}'}, status=status.HTTP_201_CREATED)
+        #return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta. {message}'}, status=status.HTTP_201_CREATED)
+        return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta.'}, status=status.HTTP_201_CREATED)
           
     except Exception as e:
         transaction.set_rollback(True)
         return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta (EmailAddress.verified = True)
 @api_view(['GET'])
 def activacion(request, uidb64, token):
+    # Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta 
+    # pone EmailAddress.verified = True
     try:
         uid = force_bytes(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -162,9 +146,9 @@ def activacion(request, uidb64, token):
         return Response({'success': False, 'message': 'El link de activación es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Esta vista recibe el mail y la contraseña, y si los datos son correctos logguea al usuario
 @api_view(['POST'])
 def login_usuario(request):
+    # Esta vista recibe el mail y la contraseña, y si los datos son correctos loguea al usuario
     try:
         username = request.data.get('username')
         password = request.data.get('password')
@@ -187,7 +171,13 @@ def login_usuario(request):
 
         login(request, user)
         response = get_user_groups(user)
-        return response
+        if 'Administrador_de_torneo' in response.data['groups']:
+            if verificar_pago(user):
+                return response
+            else:
+                return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)    
+        else:  
+            return response
 
 
     except AuthenticationFailed as e:
@@ -200,8 +190,8 @@ def login_usuario(request):
         return Response({'success': False, 'message': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Esta función devuelve la información del usuario
 def get_user_groups(user):
+    # Esta función devuelve información del usuario (solo tabla auth_user) y los grupos al que pertenece (en formato lista: groups)
     groups = user.groups.all()
     group_names = [group.name for group in groups]
     
@@ -212,8 +202,81 @@ def get_user_groups(user):
         'username': user.username,
         'email': user.email,
         'first_name': user.first_name,
-        'last_name': user.last_name,
+        'last_name': user.last_name,        
         'groups': group_names
     })
 
+@api_view(['POST'])
+def mail_password_reset(request):
+    # Esta vista recibe un email del front y  envía un link a ese mail para reestablecer la contraseña (Ha olvidado su contraseña?)
+    email = request.data.get("email")
+    user = get_object_or_404(User, email=email)
+    persona = get_object_or_404(Personas, UserID=user)
+    #persona = Personas.objects.get()  
 
+    # Enviar correo de restablecimiento de contraseña
+    enviar_email_enlace(usuario=user, persona=persona, tipo='reset', request=request)
+
+    return JsonResponse({
+        "message": "Se ha enviado un correo para restablecer la contraseña."
+    }, status=200)
+
+def enviar_email_enlace(usuario, persona, tipo, request):
+    # Esta vista crea un link y lo envía por mail    
+    # Sirve para "activacion" y para "reset"
+
+    #Ej. Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
+    #current_site = get_current_site(request) está seteado en http://localhost:8000/admin/sites
+    
+    try:
+        email = usuario.email
+        uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+        
+        if tipo == 'activacion':
+            token = account_activation_token.make_token(usuario)
+            subject = 'Activa tu cuenta en Zeus.com'
+            template = 'mail_activacion.html'
+        elif tipo == 'reset':
+            token = default_token_generator.make_token(usuario)
+            subject = 'Restablece tu contraseña'
+            template = 'mail_reset.html'
+        
+        domain = get_current_site(request).domain
+        link = f"http://{domain}/{tipo}/{uid}/{token}/"
+        
+        message = render_to_string(template, {'user': persona, 'link': link})
+        
+        send_mail(subject, message, 'noreply@zeus.com', [email])
+    except Exception as e:
+        # Registra el error para depuración
+        logger.error(f"Error al enviar el correo: {e}")
+        # Opcional: lanza una excepción personalizada para manejarla en la vista
+        raise Exception("Error al enviar el enlace por email.") from e
+
+@api_view(['POST'])
+def nuevo_pass(request, uidb64, token):
+    # Esta vista reestablece la contraseña 
+    # debe recibir new_password (ingresado por el usuario), uidb64 y token (contenidos en el link enviado al mail)
+    # Ej. link = http://localhost:8000/reset/MTAw/cgp283-4c9040bae0afb89deb10f8734922e823/
+    #  uidb64 = MTAw  (corresponde al id 10 de la tabla auth_user)
+    #  token  = cgp283-4c9040bae0afb89deb10f8734922e823
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None:
+        if default_token_generator.check_token(user, token):
+            new_password = request.data.get("new_password")
+            user.password = make_password(new_password)
+            user.save()
+            return JsonResponse({"message": "Contraseña restablecida correctamente."}, status=200)
+        else: 
+            return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (token no reconocido)."}, status=400)
+    else:
+        return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (usuario incorrecto)."}, status=400)
+
+def verificar_pago(user):
+    # Falta la funcionalidad...
+    return True
