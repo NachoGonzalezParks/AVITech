@@ -55,7 +55,7 @@ class Sexos(models.Model):
 class TiposIdentificacion(models.Model):
     TipoIdentificacionID = models.AutoField(primary_key=True, editable=False)
     Codigo = models.CharField(max_length=10, default='Otro')
-    Descripcion = models.CharField(max_length=25)
+    Descripcion = models.CharField(max_length=50)
     PaisID = models.ForeignKey(Paises, on_delete=models.PROTECT, null=True, blank=True) # cambiar null=True, blank=True por default=1 (o el que corresponda) luego de agregar datos
 
     def __str__(self):
@@ -235,3 +235,68 @@ class Delegados(models.Model):
 
     def __str__(self):
         return f"{self.UserID} - {self.TorneoID}"    
+    
+
+
+class Fases(models.Model):
+    FaseID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.Nombre
+
+
+class Zonas(models.Model):
+    ZonaID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.Nombre
+
+
+class Fixture(models.Model):
+    FixtureID = models.AutoField(primary_key=True)
+    TorneoID = models.ForeignKey(Torneos, on_delete=models.PROTECT)
+    FaseID = models.ForeignKey(Fases, on_delete=models.PROTECT)
+    ZonaID = models.ForeignKey(Zonas, on_delete=models.PROTECT)
+    FechaNumero = models.IntegerField() # Nro de Fecha dentro del fixture 
+    FechaDesde = models.DateField() # Período previsto en que se juega la fecha nro x
+    FechaHasta = models.DateField() # Período previsto en que se juega la fecha nro x
+
+    def __str__(self):
+        return f"Fixture {self.FixtureID}"
+
+
+class EstadosPartidos(models.Model):
+    EstadoPartidoID = models.AutoField(primary_key=True)
+    Estado = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.Estado
+
+
+class Partidos(models.Model):
+    PartidoID = models.AutoField(primary_key=True)
+    FixtureID = models.ForeignKey(Fixture, on_delete=models.PROTECT)
+    FechaPartido = models.DateField()  # Fecha programada o de juego efectivo del partido
+    EquipoLocalID = models.ForeignKey(
+        Equipos, 
+        on_delete=models.PROTECT, 
+        related_name='partidos_locales'  # Accesor para partidos donde este equipo es local
+    )
+    EquipoVisitanteID = models.ForeignKey(
+        Equipos, 
+        on_delete=models.PROTECT, 
+        related_name='partidos_visitantes'  # Accesor para partidos donde este equipo es visitante
+    )
+    GolesLocal = models.IntegerField(null=True, blank=True)
+    GolesVisitante = models.IntegerField(null=True, blank=True)
+    EstadoPartidoID = models.ForeignKey(EstadosPartidos, on_delete=models.PROTECT)
+    '''
+    Para Obtener todos los partidos donde un equipo es local (Ej equipo 1 )
+    equipo = Equipos.objects.get(pk=1)
+    partidos_como_local = equipo.partidos_locales.all()    
+    '''
+
+    def __str__(self):
+        return f"Partido {self.PartidoID}"
