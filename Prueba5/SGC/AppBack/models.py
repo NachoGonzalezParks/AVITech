@@ -269,10 +269,10 @@ class Fixture(models.Model):
 
 class EstadosPartidos(models.Model):
     EstadoPartidoID = models.AutoField(primary_key=True)
-    Estado = models.CharField(max_length=50)
+    Nombre = models.CharField(max_length=50)
 
     def __str__(self):
-        return self.Estado
+        return self.Nombre
 
 
 class Partidos(models.Model):
@@ -300,3 +300,55 @@ class Partidos(models.Model):
 
     def __str__(self):
         return f"Partido {self.PartidoID}"
+
+
+class JugadoresxPartidos(models.Model):
+    JugadorxPartidoID = models.AutoField(primary_key=True)
+    PartidoID = models.ForeignKey(Partidos, on_delete=models.PROTECT)
+    JugadorID = models.ForeignKey(Jugadores, on_delete=models.PROTECT)
+    EquipoID = models.ForeignKey(Equipos, on_delete=models.PROTECT)
+    Titular = models.BooleanField
+    
+    def __str__(self):
+        return f"Partido {self.JugadorxPartidoID}"  
+
+
+class TiposIncidencias(models.Model):   # Gol, Gol en contra, Amonestación, Expulsión, Suspensión...
+    TipoIncidenciaID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=50)
+    ValorTanteador = models.IntegerField(null=True)
+
+    def __str__(self):
+        return self.Nombre
+
+class IncidenciasGenerales(models.Model):   
+    IncidenciaGeneralID = models.AutoField(primary_key=True)
+    PartidoID = models.ForeignKey(Partidos, on_delete=models.PROTECT)
+    TipoIncidenciaID = models.ForeignKey(TiposIncidencias, on_delete=models.PROTECT)
+    Detalle = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"Incidencia general {self.IncidenciaGeneralID}"  
+
+
+class TiemposPartidos(models.Model):     # tiempos regulares, suplementarios, penales
+    TiempoPartidoID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=50)
+    MinutosDuracion = models.IntegerField(null=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.nombre} min.) "        
+
+
+class IncidenciasJugadores(models.Model):     
+    IncidenciaJugadorID = models.AutoField(primary_key=True)
+    PartidoID = models.ForeignKey(Partidos, on_delete=models.PROTECT)
+    JugadorID = models.ForeignKey(Jugadores, on_delete=models.PROTECT)
+    TipoIncidenciaID = models.ForeignKey(TiposIncidencias, on_delete=models.PROTECT)
+    Minuto = models.IntegerField(null=True)  # 45, 47, 55..
+    TiempoPartidoID = models.ForeignKey(TiemposPartidos, on_delete=models.PROTECT) 
+    Detalle = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"Incidencia jugador {self.IncidenciaJugadorID}"
+

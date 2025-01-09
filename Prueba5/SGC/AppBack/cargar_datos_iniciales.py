@@ -14,7 +14,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SGC.settings")
 #os.environ.setdefault("DJANGO_SETTINGS_MODULE", "C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\prueba5\SGC\SGC\sgc.settings")
 django.setup()
 from django.contrib.auth.models import Group
-from AppBack.models import Paises, Provincias, Ciudades, Sexos, TiposIdentificacion, TiposDisciplinas, Disciplinas, EstadosTorneos, EstadosActores, EstadosEquipos, RolesEquipo, Categorias, Divisiones, Fases, Zonas, Fixture, EstadosPartidos, Partidos 
+from AppBack.models import Paises, Provincias, Ciudades, Sexos, TiposIdentificacion, TiposDisciplinas, Disciplinas, EstadosTorneos, EstadosActores, EstadosEquipos, RolesEquipo, Categorias, Divisiones, Fases, Zonas, Fixture, EstadosPartidos, Partidos , TiposIncidencias, TiemposPartidos
 
 def cargar_datos_iniciales():
 
@@ -184,9 +184,10 @@ def cargar_datos_iniciales():
 
     # Datos iniciales para la tabla RolesEquipo
     roles_equipo_data = [
-        {"RolID": 1, "Nombre": "Jugador"},
-        {"RolID": 2, "Nombre": "Técnico"},
-        {"RolID": 3, "Nombre": "Otro"},
+        {"RolID": 1, "Nombre": "Jugador de campo"},
+        {"RolID": 2, "Nombre": "Arquero"},
+        {"RolID": 3, "Nombre": "Técnico"},
+        {"RolID": 4, "Nombre": "Otro"},
     ]
     for rol in roles_equipo_data:
         RolesEquipo.objects.update_or_create(RolID=rol["RolID"], defaults=rol)
@@ -247,13 +248,43 @@ def cargar_datos_iniciales():
 
     # Datos iniciales para la tabla EstadosPartidos
     estados_partidos_data = [
-        {"EstadoPartidoID": i, "Estado": nombre}
+        {"EstadoPartidoID": i, "Nombre": nombre}
         for i, nombre in enumerate(["Jugado", "Programado", "Suspendido"], start=1)
     ]
     for estado in estados_partidos_data:
         EstadosPartidos.objects.update_or_create(EstadoPartidoID=estado["EstadoPartidoID"], defaults=estado)
 
+    # Datos iniciales para la tabla TiposIncidencias
+    tipos_incidencias_data = [
+        {"TipoIncidenciaID": 1, "Nombre": "Gol", "ValorTanteador": 1},
+        {"TipoIncidenciaID": 2, "Nombre": "Gol en contra", "ValorTanteador": -1},
+        {"TipoIncidenciaID": 3, "Nombre": "Amonestacón", "ValorTanteador": 0},
+        {"TipoIncidenciaID": 4, "Nombre": "Expulsión", "ValorTanteador": 0},        
+        {"TipoIncidenciaID": 5, "Nombre": "Suspensión", "ValorTanteador": 0},
+    ]
+    for tipo in tipos_incidencias_data:
+        TiposIncidencias.objects.update_or_create(TipoIncidenciaID=tipo["TipoIncidenciaID"], defaults=tipo)
+
+   # Datos iniciales para la tabla TiemposPartidos  
+    tiempos_data = [
+        {"TiempoPartidoID": 1, "Nombre": "Primer tiempo", "MinutosDuracion": 90},
+        {"TiempoPartidoID": 2, "Nombre": "Segundo tiempo", "MinutosDuracion": 90},
+        {"TiempoPartidoID": 3, "Nombre": "Primer suplementario", "MinutosDuracion": 15},
+        {"TiempoPartidoID": 4, "Nombre": "Segundo Suplementario", "MinutosDuracion": 15},        
+        {"TiempoPartidoID": 5, "Nombre": "Definición por penales", "MinutosDuracion": 0},
+        {"TiempoPartidoID": 6, "Nombre": "Suplementario (único)", "MinutosDuracion": 0},
+        {"TiempoPartidoID": 7, "Nombre": "Suplementario gol de oro", "MinutosDuracion": 0},
+        {"TiempoPartidoID": 8, "Nombre": "Otro", "MinutosDuracion": 0},
+    ]
+    for tiempos in tiempos_data:
+        TiemposPartidos.objects.update_or_create(TiempoPartidoID=tiempos["TiempoPartidoID"], defaults=tiempos)
+
     print("Datos iniciales cargados exitosamente.")
+
+
+
+
 
 if __name__ == "__main__":
     cargar_datos_iniciales()
+
