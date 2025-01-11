@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion, LoginPersona              
+from .models import Personas, TiposIdentificacion, LoginPersona, Sexos                         
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -52,7 +52,8 @@ def email_existe(request):
 @transaction.atomic  
 def registro_usuario(request):   
     # Esta vista crea un nuevo usuario y envía el mail de verificación 
-    # Debe recibir: email, password1, password2, nombre, apellido, tipo_identificacion, numero_identificacion, fecha_nacimiento
+    # Debe recibir: email, password1, password2, nombre, apellido, 
+    #               tipo_identificacion, numero_identificacion, sexo fecha_nacimiento
     #   opcionales: alias, telefono       
     username = request.data.get('email')
     email = request.data.get('email')
@@ -63,8 +64,10 @@ def registro_usuario(request):
     alias = request.data.get('alias')
     tipo_identificacion = request.data.get('tipo_identificacion')
     numero_identificacion = request.data.get('numero_identificacion')
+    sexo = request.data.get('sexo')
     fecha_nacimiento = request.data.get('fecha_nacimiento')
     telefono = request.data.get('telefono')
+    
 
     try:       
         if password1 != password2:
@@ -90,7 +93,7 @@ def registro_usuario(request):
             return Response({'success': False, 'message': 'El formato del email es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
        
       
-        user = User.objects.create_user(username=email, email=email, password=password1)
+        user = User.objects.create_user(username=email, email=email, password=password1, last_name=apellido, first_name=nombre)
       
         email_address = EmailAddress.objects.create(
             user=user,
@@ -101,19 +104,22 @@ def registro_usuario(request):
      
         token = Token.objects.create(user=user)        
         tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   
+
+        codigosexo = Sexos.objects.get(SexoId=sexo)
     
         persona = Personas.objects.create(
             UserID=user,
-            Nombre=request.data['nombre'],
-            Apellido=request.data['apellido'],
-            Alias=request.data['alias'],
+            #Nombre=request.data['nombre'],
+            #Apellido=request.data['apellido'],
+            Alias=alias, #request.data['alias'],
             TipoIdentificacionID=tipo_identificacion_obj,
-            NroIdentificacion=request.data['numero_identificacion'],
-            FechaNacimiento=request.data['fecha_nacimiento'],
-            Telefono=request.data['telefono']
+            NroIdentificacion= numero_identificacion, #request.data['numero_identificacion'],
+            SexoID=codigosexo,
+            FechaNacimiento=fecha_nacimiento, #request.data['fecha_nacimiento'],
+            Telefono=telefono #request.data['telefono']
         )
 
-        admin_group = Group.objects.get(name="Administrador_de_torneo")
+        admin_group = Group.objects.get(name="Administrador de torneo")
         user.groups.add(admin_group)
 
         # Enviar email para requerir verificación de la cuenta

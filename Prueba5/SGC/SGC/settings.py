@@ -145,6 +145,9 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+MEDIA_ROOT = BASE_DIR / "media" # carpeta donde se guardarán las imágenes o similares
+MEDIA_URL = "/media/" # URL base para acceder a estos archivos.
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -230,3 +233,5 @@ LOGGING = {
         },
     },
 }
+
+
