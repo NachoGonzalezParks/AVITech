@@ -4,17 +4,16 @@ from django.db import transaction  # Para asegurar atomicidad
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authtoken.models import Token
-from rest_framework.exceptions import ValidationError as DRFValidationError
-from allauth.account.models import EmailAddress
-from .models import Personas, TiposIdentificacion
-'''Agregados para envío y verif. de mail al registrarse'''
+from rest_framework.authtoken.models import Token     
+from rest_framework.exceptions import ValidationError as DRFValidationError   
+from allauth.account.models import EmailAddress        
+from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales                         
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -24,45 +23,43 @@ from django.contrib.sites.shortcuts import get_current_site
 from .Tokens import account_activation_token    # Crear un token personalizado para verificación
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import AuthenticationFailed
+from django.contrib.auth.tokens import default_token_generator
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.hashers import make_password
+from django.views import View
+import logging
+import pandas as pd
+import re
+from io import BytesIO
+from datetime import datetime
+logger = logging.getLogger(__name__)
 
 
-# Esta vista verificar si el email recibido del front ya existe en BD
-# (cuando el usuario ingresa el email con el cual se va a registrar) 
 @api_view(['POST'])
 def email_existe(request):   
-
-    # Recibe el email desde el front
+    # Esta vista verificar si el email recibido del front ya existe en BD
+    # (cuando el usuario ingresa el email con el cual se va a registrar) 
+    
     email = request.data.get('email')
 
     # Verifica si el email ya está en uso
     email_existe = User.objects.filter(email=email).exists() or User.objects.filter(username=email).exists()
 
-    # Devuelve true si el email existe, false si está disponible
+    # Devuelve true si el email Existe, false si está Disponible (puede usarlo para registrarse)
     if email_existe:
         return Response({'existe': True}, status=status.HTTP_200_OK)
     else:
         return Response({'existe': False}, status=status.HTTP_200_OK)
 
 
-# Esta vista inserta un nuevo usuario y envía el mail de verificaciòn 
 @api_view(['POST'])
 @transaction.atomic  
-def registro_usuario(request):    
-
-    '''DEVOLUCIONES AL FRONT:
-      1) Datos no válidos como 
-         pass débiles                           >>> ("Contraseña débil: This password is too short. It must contain at least 8 characters., This password is too common., This password is entirely numeric.")
-         pass distintas                         >>> ("Las contraseñas no coinciden.")
-         formato de fecha incorrecto            >>> ("Error: ['“1980-13-08” value has the correct format (YYYY-MM-DD) but it is an invalid date.']")
-                                                  ó ("Error: ['“abc” value has an invalid date format. It must be in YYYY-MM-DD format.']")
-         tipo de identificación inexistente     >>> ("Error: TiposIdentificacion matching query does not exist.")
-         nombre y apellido vacío                >>> ("El nombre y el apellido no pueden estar vacíos.")
-         usrusuario existente                   >>> ("Error: llave duplicada viola restricción de unicidad «auth_user_username_key»\nDETAIL:  Ya existe la llave (username)=(admin3@example.com).\n")
-         envío de mail                          >>> ("Error: account/acc_active_email.html"})
-      2) Ante un error luego e las validaciones hace rollback de todas las tablas y devuleve el msg (varía de acuerdo al error que lo provocó)      
-    '''
-
-    # Datos recibidos desde el front
+def registro_usuario(request):   
+    # Esta vista crea un nuevo usuario y envía el mail de verificación 
+    # Debe recibir: email, password1, password2, nombre, apellido, 
+    #               tipo_identificacion, numero_identificacion, sexo fecha_nacimiento
+    #   opcionales: alias, telefono       
     username = request.data.get('email')
     email = request.data.get('email')
     password1 = request.data.get('password1')
@@ -72,8 +69,10 @@ def registro_usuario(request):
     alias = request.data.get('alias')
     tipo_identificacion = request.data.get('tipo_identificacion')
     numero_identificacion = request.data.get('numero_identificacion')
+    sexo = request.data.get('sexo')
     fecha_nacimiento = request.data.get('fecha_nacimiento')
     telefono = request.data.get('telefono')
+    
 
     try:       
         if password1 != password2:
@@ -99,7 +98,7 @@ def registro_usuario(request):
             return Response({'success': False, 'message': 'El formato del email es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
        
       
-        user = User.objects.create_user(username=email, email=email, password=password1)
+        user = User.objects.create_user(username=email, email=email, password=password1, last_name=apellido, first_name=nombre)
       
         email_address = EmailAddress.objects.create(
             user=user,
@@ -110,43 +109,39 @@ def registro_usuario(request):
      
         token = Token.objects.create(user=user)        
         tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   
+
+        codigosexo = Sexos.objects.get(SexoId=sexo)
     
         persona = Personas.objects.create(
             UserID=user,
-            Nombre=request.data['nombre'],
-            Apellido=request.data['apellido'],
-            Alias=request.data['alias'],
+            #Nombre=request.data['nombre'],
+            #Apellido=request.data['apellido'],
+            Alias=alias, #request.data['alias'],
             TipoIdentificacionID=tipo_identificacion_obj,
-            NroIdentificacion=request.data['numero_identificacion'],
-            FechaNacimiento=request.data['fecha_nacimiento'],
-            Telefono=request.data['telefono']
+            NroIdentificacion= numero_identificacion, #request.data['numero_identificacion'],
+            SexoID=codigosexo,
+            FechaNacimiento=fecha_nacimiento, #request.data['fecha_nacimiento'],
+            Telefono=telefono #request.data['telefono']
         )
 
-        admin_group = Group.objects.get(name="Administrador")
+        admin_group = Group.objects.get(name="Administrador de torneo")
         user.groups.add(admin_group)
 
         # Enviar email para requerir verificación de la cuenta
-        # Ej . Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
-        current_site = get_current_site(request)   # seteado en http://localhost:8000/admin/sites
-        mail_subject = 'Activa tu cuenta en Zeus.com'                       
-        message = render_to_string('mail_activacion.html', {
-            'user': persona,
-            'domain': current_site.domain,
-            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-            'token': account_activation_token.make_token(user),
-        })
-        send_mail(mail_subject, message, 'noreply@zeus.com', [email])    
+        enviar_email_enlace(usuario=user, persona=persona, tipo='activacion', request=request) 
         
-        return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta. {message}'}, status=status.HTTP_201_CREATED)
+        #return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta. {message}'}, status=status.HTTP_201_CREATED)
+        return Response({'success': True, 'message': f'Registro exitoso. Revisa tu correo para confirmar tu cuenta.'}, status=status.HTTP_201_CREATED)
           
     except Exception as e:
         transaction.set_rollback(True)
-        return Response({'success': False, 'message': f'Error esto: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta (EmailAddress.verified = True)
 @api_view(['GET'])
 def activacion(request, uidb64, token):
+    # Esta vista recibe la url de verificación, accedida desde el mail del usuario, y si el link es válido activa la cuenta 
+    # pone EmailAddress.verified = True
     try:
         uid = force_bytes(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -162,7 +157,6 @@ def activacion(request, uidb64, token):
         return Response({'success': False, 'message': 'El link de activación es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Esta vista recibe el mail y la contraseña, y si los datos son correctos logguea al usuario
 @api_view(['POST'])
 def login_usuario(request):
     try:
@@ -173,7 +167,7 @@ def login_usuario(request):
             return Response({'success': False, 'message': 'Nombre de usuario y contraseña son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(email=username, password=password)
-        
+
         if user is None:
             raise AuthenticationFailed('Datos incorrectos')
 
@@ -181,14 +175,58 @@ def login_usuario(request):
             email_address = EmailAddress.objects.get(user=user, email=username)
         except ObjectDoesNotExist:
             return Response({'success': False, 'message': 'No se encontró una cuenta asociada a este correo.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         if not email_address.verified:
             return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        login(request, user)
         response = get_user_groups(user)
-        return response
 
+        if 'Administrador' in response.data['groups']:
+            # Se marca como False el campo first_login de la tabla Personas
+            try:
+                persona = Personas.objects.get(user=user)
+                persona.first_login = False
+                persona.save()
+            except ObjectDoesNotExist:
+                return Response({'success': False, 'message': 'No se encontró la persona asociada a este usuario.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if verificar_pago(user):
+                try:
+                    # Loguear usuario
+                    marcar_login('loguear', response.data['pk'], response.data['email'])
+                except RuntimeError as e:
+                    return Response({'success': False, 'message': f'Error al loguear: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            else:
+                return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            # Se comprueba si el campo 'first_login' está marcado como True para los demás roles
+            if 'Co Administrador' in response.data['groups'] or 'Delegado' in response.data['groups'] or 'Árbitro' in response.data['groups'] or 'Jugador' in response.data['groups']:
+                try:
+                    persona = Personas.objects.get(user=user)
+
+                    if persona.first_login:
+                        # Cambiar la contraseña (porque al darlo de alta se guardó el DNI o Número de Identificación como contraseña inicial/temporal)
+                        new_password = request.data.get('new_password')
+                        if not new_password:
+                            return Response({'success': False, 'message': 'Se requiere una nueva contraseña.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                        if len(new_password) < 8:
+                            return Response({'success': False, 'message': 'La contraseña debe tener al menos 8 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                        user.set_password(new_password) 
+                        user.save() 
+
+                        persona.first_login = False
+                        persona.save()
+
+                        return Response({'success': True, 'message': 'Contraseña cambiada correctamente. Puede proceder a iniciar sesión.'}, status=status.HTTP_200_OK)
+
+                except ObjectDoesNotExist:
+                    return Response({'success': False, 'message': 'No se encontró la persona asociada a este usuario.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return response
 
     except AuthenticationFailed as e:
         return Response({'success': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -199,9 +237,31 @@ def login_usuario(request):
     except Exception as e:
         return Response({'success': False, 'message': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    
 
-# Esta función devuelve la información del usuario
+@api_view(['POST'])
+def logout_usuario(request):
+    try:
+        user_id = request.data.get('id')
+        email = request.data.get('email')
+
+        if not user_id or not email:
+            return Response({'success': False, 'message': 'Se requieren el id y el email del usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Llamar a la función marcar_login con la acción "deslogguear"
+        deleted = marcar_login('desloguear', user_id, email)
+
+        if deleted:
+            return Response({'success': True, 'message': 'Usuario deslogueado correctamente.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'success': False, 'message': 'El usuario no estaba logueado.'}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 def get_user_groups(user):
+    # Esta función devuelve información del usuario (solo tabla auth_user) y los grupos al que pertenece (en formato lista: groups)
     groups = user.groups.all()
     group_names = [group.name for group in groups]
     
@@ -212,8 +272,269 @@ def get_user_groups(user):
         'username': user.username,
         'email': user.email,
         'first_name': user.first_name,
-        'last_name': user.last_name,
+        'last_name': user.last_name,        
         'groups': group_names
     })
 
+def marcar_login(accion, id, email):
+    try:
+        if accion == 'loguear':
+            # Agregar o verificar existencia de la persona
+            persona, creada = LoginPersona.objects.get_or_create(id=id, mail=email)
+            return creada  # True si la persona fue creada, False si ya existía
 
+        elif accion == 'desloguear':
+            # Intentar eliminar el registro
+            deleted, _ = LoginPersona.objects.filter(id=id, mail=email).delete()
+            return deleted  # Número de filas eliminadas (1 si se eliminó, 0 si no se encontró)
+
+        else:
+            raise ValueError("Acción no válida. Usa 'logguear' o 'deslogguear'.")
+
+    except Exception as e:
+        raise RuntimeError(f"Error al realizar la acción {accion}: {str(e)}")
+
+
+
+@api_view(['POST'])
+def mail_password_reset(request):
+    # Esta vista recibe un email del front y  envía un link a ese mail para reestablecer la contraseña (Ha olvidado su contraseña?)
+    email = request.data.get("email")
+    user = get_object_or_404(User, email=email)
+    persona = get_object_or_404(Personas, UserID=user)
+    #persona = Personas.objects.get()  
+
+    # Enviar correo de restablecimiento de contraseña
+    enviar_email_enlace(usuario=user, persona=persona, tipo='reset', request=request)
+
+    return JsonResponse({
+        "message": "Se ha enviado un correo para restablecer la contraseña."
+    }, status=200)
+
+def enviar_email_enlace(usuario, persona, tipo, request):
+    # Esta vista crea un link y lo envía por mail    
+    # Sirve para "activacion" y para "reset"
+
+    #Ej. Carpeta Templates = C:\Users\aleja\OneDrive\Documentos\Ale\SistemaGC\AVITech\Prueba5\SGC\templates
+    #current_site = get_current_site(request) está seteado en http://localhost:8000/admin/sites
+    
+    try:
+        email = usuario.email
+        uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+        
+        if tipo == 'activacion':
+            token = account_activation_token.make_token(usuario)
+            subject = 'Activa tu cuenta en Zeus.com'
+            template = 'mail_activacion.html'
+        elif tipo == 'reset':
+            token = default_token_generator.make_token(usuario)
+            subject = 'Restablece tu contraseña'
+            template = 'mail_reset.html'
+        
+        domain = get_current_site(request).domain
+        link = f"http://{domain}/{tipo}/{uid}/{token}/"
+        
+        message = render_to_string(template, {'user': persona, 'link': link})
+        
+        send_mail(subject, message, 'noreply@zeus.com', [email])
+    except Exception as e:
+        # Registra el error para depuración
+        logger.error(f"Error al enviar el correo: {e}")
+        # Opcional: lanza una excepción personalizada para manejarla en la vista
+        raise Exception("Error al enviar el enlace por email.") from e
+
+@api_view(['POST'])
+def nuevo_pass(request, uidb64, token):
+    # Esta vista reestablece la contraseña 
+    # debe recibir new_password (ingresado por el usuario), uidb64 y token (contenidos en el link enviado al mail)
+    # Ej. link = http://localhost:8000/reset/MTAw/cgp283-4c9040bae0afb89deb10f8734922e823/
+    #  uidb64 = MTAw  (corresponde al id 10 de la tabla auth_user)
+    #  token  = cgp283-4c9040bae0afb89deb10f8734922e823
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None:
+        if default_token_generator.check_token(user, token):
+            new_password = request.data.get("new_password")
+            user.password = make_password(new_password)
+            user.save()
+            return JsonResponse({"message": "Contraseña restablecida correctamente."}, status=200)
+        else: 
+            return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (token no reconocido)."}, status=400)
+    else:
+        return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (usuario incorrecto)."}, status=400)
+
+def verificar_pago(user):
+    # Falta la funcionalidad...
+    return True
+
+
+class AltaUsuariosView(View):
+    def get(self, request, *args, **kwargs):
+        if not self.request.user.groups.filter(name__in=["Administrador", "Co Administrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para acceder a esta página."}, status=403)
+
+        rol_alta = request.GET.get('rol', None)
+        if rol_alta:
+            if rol_alta in ["jugadores", "delegados", "árbitros", "coadministradores"]:
+                plantilla = self.generar_plantilla_excel(rol_alta)
+                response = HttpResponse(plantilla, content_type='application/vnd.ms-excel')
+                response['Content-Disposition'] = f'attachment; filename=plantilla_{rol_alta}.xlsx'
+                return response
+
+        return JsonResponse({"message": "Especifica un rol válido para descargar la plantilla."}, status=400)
+
+    def post(self, request, *args, **kwargs):
+        if not self.request.user.groups.filter(name__in=["Administrador", "Co Administrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        archivo = request.FILES.get('archivo')
+        if archivo:
+            df = pd.read_excel(archivo)
+            rol_alta = request.POST.get('rol')
+
+            errores = self.validar_datos(df, rol_alta)
+            if errores:
+                return JsonResponse({"errores": errores}, status=400)
+
+            try:
+                with transaction.atomic():
+                    self.crear_usuarios_temporales(df, rol_alta, request)
+                return JsonResponse({"message": "Usuarios creados exitosamente."})
+            except Exception as e:
+                return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse({"error": "No se cargó ningún archivo."}, status=400)
+
+    def generar_plantilla_excel(self, rol_alta):
+        columnas = {
+            "jugadores": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+            "delegados": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+            "árbitros": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+            "coadministradores": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+        }
+        df = pd.DataFrame(columns=columnas.get(rol_alta, []))
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Plantilla")
+        output.seek(0)
+        return output
+
+    def validar_datos(self, df, rol_alta):
+        columnas_requeridas = [
+            "Nombre", "Apellido", "Alias", "Email",
+            "Tipo de Identificación", "Número de Identificación",
+            "Sexo", "Fecha de Nacimiento", "Teléfono"
+        ]
+        errores = []
+
+        faltantes = [col for col in columnas_requeridas if col not in df.columns]
+        if faltantes:
+            errores.append(f"Faltan las siguientes columnas: {', '.join(faltantes)}")
+            return errores
+
+        for index, row in df.iterrows():
+            fila_errores = []
+
+            email = row.get("Email", "").strip()
+            if not email:
+                fila_errores.append("El email es obligatorio.")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                fila_errores.append("El formato del email es inválido.")
+            elif User.objects.filter(email=email).exists():
+                fila_errores.append("El email ya está en uso.")
+
+            tipo_identificacion = row.get("Tipo de Identificación", "").strip()
+            if not tipo_identificacion:
+                fila_errores.append("El tipo de identificación es obligatorio.")
+            elif not TiposIdentificacion.objects.filter(Codigo=tipo_identificacion).exists():
+                fila_errores.append(f"El tipo de identificación '{tipo_identificacion}' no es válido.")
+
+            sexo = row.get("Sexo", "").strip()
+            if not sexo:
+                fila_errores.append("El sexo es obligatorio.")
+            elif not Sexos.objects.filter(SexoId=sexo).exists():
+                fila_errores.append(f"El valor '{sexo}' no es un sexo válido.")
+
+            fecha_nacimiento = row.get("Fecha de Nacimiento", "").strip()
+            if not fecha_nacimiento:
+                fila_errores.append("La fecha de nacimiento es obligatoria.")
+            else:
+                try:
+                    datetime.strptime(fecha_nacimiento, "%d/%m/%Y")
+                except ValueError:
+                    fila_errores.append(f"La fecha de nacimiento '{fecha_nacimiento}' debe estar en formato DD/MM/YYYY.")
+
+            if fila_errores:
+                errores.append(f"Errores en fila {index + 1}: {', '.join(fila_errores)}")
+
+        return errores
+
+    def crear_usuarios_temporales(self, df, rol_alta, request):
+        errores = []
+        for _, row in df.iterrows():
+            try:
+                UsuariosTemporales.objects.create(
+                    nombre=row.get("Nombre"),
+                    apellido=row.get("Apellido"),
+                    alias=row.get("Alias"),
+                    email=row.get("Email"),
+                    tipo_identificacion=row.get("Tipo de Identificación"),
+                    numero_identificacion=row.get("Número de Identificación"),
+                    sexo=row.get("Sexo"),
+                    fecha_nacimiento=row.get("Fecha de Nacimiento"),
+                    telefono=row.get("Teléfono"),
+                    rol=rol_alta,
+                    creado_por=request.user
+                )
+            except Exception as e:
+                errores.append(f"Error en fila {row.name + 1}: {str(e)}")
+
+        if errores:
+            raise Exception("Errores al crear usuarios temporales.")
+
+    def confirmar_usuarios(self, request, *args, **kwargs):
+        usuarios_temporales = UsuariosTemporales.objects.filter(creado_por=request.user)
+        errores = []
+
+        try:
+            with transaction.atomic():
+                for ut in usuarios_temporales:
+                    usuario = User.objects.create_user(
+                        username=ut.email,
+                        email=ut.email,
+                        password=ut.numero_identificacion,
+                        first_name=ut.nombre,
+                        last_name=ut.apellido,
+                        is_active=True
+                    )
+
+                    grupo = Group.objects.get(name=ut.rol.capitalize())
+                    usuario.groups.add(grupo)
+
+                    tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=ut.tipo_identificacion)
+                    sexo_obj = Sexos.objects.get(SexoId=ut.sexo)
+
+                    Personas.objects.create(
+                        UserID=usuario,
+                        Alias=ut.alias,
+                        TipoIdentificacionID=tipo_identificacion_obj,
+                        NroIdentificacion=ut.numero_identificacion,
+                        SexoID=sexo_obj,
+                        FechaNacimiento=ut.fecha_nacimiento,
+                        Telefono=ut.telefono,
+                    )
+                UsuariosTemporales.objects.filter(creado_por=request.user).delete()
+        except Exception as e:
+            errores.append(str(e))
+
+        if errores:
+            return JsonResponse({"error": errores}, status=500)
+        return JsonResponse({"message": "Usuarios confirmados exitosamente."})
+
+    def cancelar_usuarios(self, request, *args, **kwargs):
+        UsuariosTemporales.objects.filter(creado_por=request.user).delete()
+        return JsonResponse({"message": "Proceso cancelado y datos eliminados temporalmente."})

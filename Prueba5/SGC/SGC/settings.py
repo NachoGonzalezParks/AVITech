@@ -101,7 +101,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'Prueba5_PSQL',
         'USER': 'postgres',
-        'PASSWORD': 'Avit3578', 
+        'PASSWORD': '123Bbokari123', 
         'HOST': 'localhost',  # o el host donde está tu base de datos
         'PORT': '5432',       # El puerto por defecto de PostgreSQL es 5432
     }
@@ -144,6 +144,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MEDIA_ROOT = BASE_DIR / "media" # carpeta donde se guardarán las imágenes o similares
+MEDIA_URL = "/media/" # URL base para acceder a estos archivos.
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -230,3 +233,5 @@ LOGGING = {
         },
     },
 }
+
+
