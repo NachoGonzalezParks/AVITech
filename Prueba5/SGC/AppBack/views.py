@@ -176,7 +176,7 @@ def login_usuario(request):
             if verificar_pago(user):
                 try:
                     # Loguear usuario
-                    marcar_login('logguear', response.data['pk'], response.data['email'])
+                    marcar_login('loguear', response.data['pk'], response.data['email'])
                 except RuntimeError as e:
                     return Response({'success': False, 'message': f'Error al loguear: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -194,6 +194,27 @@ def login_usuario(request):
 
     except Exception as e:
         return Response({'success': False, 'message': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+@api_view(['POST'])
+def logout_usuario(request):
+    try:
+        user_id = request.data.get('id')
+        email = request.data.get('email')
+
+        if not user_id or not email:
+            return Response({'success': False, 'message': 'Se requieren el id y el email del usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Llamar a la función marcar_login con la acción "deslogguear"
+        deleted = marcar_login('desloguear', user_id, email)
+
+        if deleted:
+            return Response({'success': True, 'message': 'Usuario deslogueado correctamente.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'success': False, 'message': 'El usuario no estaba logueado.'}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def get_user_groups(user):
@@ -214,12 +235,12 @@ def get_user_groups(user):
 
 def marcar_login(accion, id, email):
     try:
-        if accion == 'logguear':
+        if accion == 'loguear':
             # Agregar o verificar existencia de la persona
             persona, creada = LoginPersona.objects.get_or_create(id=id, mail=email)
             return creada  # True si la persona fue creada, False si ya existía
 
-        elif accion == 'deslogguear':
+        elif accion == 'desloguear':
             # Intentar eliminar el registro
             deleted, _ = LoginPersona.objects.filter(id=id, mail=email).delete()
             return deleted  # Número de filas eliminadas (1 si se eliminó, 0 si no se encontró)
@@ -306,3 +327,23 @@ def nuevo_pass(request, uidb64, token):
 def verificar_pago(user):
     # Falta la funcionalidad...
     return True
+
+
+@api_view(['POST'])
+def abm_generico(request):
+    persona = Personas.objects.get(UserID=request.user)
+    userid = persona.id
+    user_groups = request.user.groups.all()
+    roles = [group.name for group in user_groups]
+
+    rol_alta = request.data.get('altarol')
+
+    if 'Delegado' in roles:
+        return 'Jugador'
+    elif 'Administrador' in roles:
+        return 'Co-Administrador, Árbitro, Delegado, Jugador'
+    elif 'Co-Administrador' in roles:
+        return 'Árbitro, Delegado, Jugador'
+        
+
+
