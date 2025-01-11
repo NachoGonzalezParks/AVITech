@@ -73,6 +73,7 @@ class Personas(models.Model):
     FechaNacimiento = models.DateField()
     Telefono = models.CharField(max_length=20)
     SexoID = models.ForeignKey(Sexos, on_delete=models.PROTECT, null=True, blank=True) # cambiar null=True, blank=True por default=1 (o el que corresponda) luego de agregar datos
+    first_login = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.Nombre} {self.Alias} {self.Apellido} "
@@ -370,3 +371,17 @@ class IncidenciasJugadores(models.Model):
     def __str__(self):
         return f"Incidencia jugador {self.IncidenciaJugadorID}"
 
+
+class UsuariosTemporales(models.Model):
+    nombre = models.CharField(max_length=255)
+    apellido = models.CharField(max_length=255)
+    alias = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    tipo_identificacion = models.CharField(max_length=50)
+    numero_identificacion = models.CharField(max_length=50)
+    sexo = models.CharField(max_length=10)
+    fecha_nacimiento = models.DateField()
+    telefono = models.CharField(max_length=20)
+    rol = models.CharField(max_length=50)
+    creado_por = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)

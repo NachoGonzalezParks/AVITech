@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion, LoginPersona, Sexos                         
+from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales                         
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -25,9 +25,14 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.hashers import make_password
+from django.views import View
 import logging
+import pandas as pd
+import re
+from io import BytesIO
+from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
@@ -154,7 +159,6 @@ def activacion(request, uidb64, token):
 
 @api_view(['POST'])
 def login_usuario(request):
-    # Esta vista recibe el mail y la contraseña, y si los datos son correctos loguea al usuario
     try:
         username = request.data.get('username')
         password = request.data.get('password')
@@ -163,7 +167,7 @@ def login_usuario(request):
             return Response({'success': False, 'message': 'Nombre de usuario y contraseña son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(email=username, password=password)
-        
+
         if user is None:
             raise AuthenticationFailed('Datos incorrectos')
 
@@ -171,14 +175,21 @@ def login_usuario(request):
             email_address = EmailAddress.objects.get(user=user, email=username)
         except ObjectDoesNotExist:
             return Response({'success': False, 'message': 'No se encontró una cuenta asociada a este correo.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         if not email_address.verified:
             return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Obtén la respuesta de los grupos de usuario
         response = get_user_groups(user)
-        
+
         if 'Administrador' in response.data['groups']:
+            # Se marca como False el campo first_login de la tabla Personas
+            try:
+                persona = Personas.objects.get(user=user)
+                persona.first_login = False
+                persona.save()
+            except ObjectDoesNotExist:
+                return Response({'success': False, 'message': 'No se encontró la persona asociada a este usuario.'}, status=status.HTTP_404_NOT_FOUND)
+
             if verificar_pago(user):
                 try:
                     # Loguear usuario
@@ -188,8 +199,33 @@ def login_usuario(request):
 
             else:
                 return Response({'success': False, 'message': 'El pago de su cuenta no está completado.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Independientemente de que esté logueado o no, siempre se devuelve la respuesta
+
+        else:
+            # Se comprueba si el campo 'first_login' está marcado como True para los demás roles
+            if 'Co Administrador' in response.data['groups'] or 'Delegado' in response.data['groups'] or 'Árbitro' in response.data['groups'] or 'Jugador' in response.data['groups']:
+                try:
+                    persona = Personas.objects.get(user=user)
+
+                    if persona.first_login:
+                        # Cambiar la contraseña (porque al darlo de alta se guardó el DNI o Número de Identificación como contraseña inicial/temporal)
+                        new_password = request.data.get('new_password')
+                        if not new_password:
+                            return Response({'success': False, 'message': 'Se requiere una nueva contraseña.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                        if len(new_password) < 8:
+                            return Response({'success': False, 'message': 'La contraseña debe tener al menos 8 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                        user.set_password(new_password) 
+                        user.save() 
+
+                        persona.first_login = False
+                        persona.save()
+
+                        return Response({'success': True, 'message': 'Contraseña cambiada correctamente. Puede proceder a iniciar sesión.'}, status=status.HTTP_200_OK)
+
+                except ObjectDoesNotExist:
+                    return Response({'success': False, 'message': 'No se encontró la persona asociada a este usuario.'}, status=status.HTTP_404_NOT_FOUND)
+
         return response
 
     except AuthenticationFailed as e:
@@ -200,6 +236,7 @@ def login_usuario(request):
 
     except Exception as e:
         return Response({'success': False, 'message': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     
 
 @api_view(['POST'])
@@ -335,21 +372,169 @@ def verificar_pago(user):
     return True
 
 
-@api_view(['POST'])
-def abm_generico(request):
-    persona = Personas.objects.get(UserID=request.user)
-    userid = persona.id
-    user_groups = request.user.groups.all()
-    roles = [group.name for group in user_groups]
+class AltaUsuariosView(View):
+    def get(self, request, *args, **kwargs):
+        if not self.request.user.groups.filter(name__in=["Administrador", "Co Administrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para acceder a esta página."}, status=403)
 
-    rol_alta = request.data.get('altarol')
+        rol_alta = request.GET.get('rol', None)
+        if rol_alta:
+            if rol_alta in ["jugadores", "delegados", "árbitros", "coadministradores"]:
+                plantilla = self.generar_plantilla_excel(rol_alta)
+                response = HttpResponse(plantilla, content_type='application/vnd.ms-excel')
+                response['Content-Disposition'] = f'attachment; filename=plantilla_{rol_alta}.xlsx'
+                return response
 
-    if 'Delegado' in roles:
-        return 'Jugador'
-    elif 'Administrador' in roles:
-        return 'Co-Administrador, Árbitro, Delegado, Jugador'
-    elif 'Co-Administrador' in roles:
-        return 'Árbitro, Delegado, Jugador'
-        
+        return JsonResponse({"message": "Especifica un rol válido para descargar la plantilla."}, status=400)
 
+    def post(self, request, *args, **kwargs):
+        if not self.request.user.groups.filter(name__in=["Administrador", "Co Administrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
 
+        archivo = request.FILES.get('archivo')
+        if archivo:
+            df = pd.read_excel(archivo)
+            rol_alta = request.POST.get('rol')
+
+            errores = self.validar_datos(df, rol_alta)
+            if errores:
+                return JsonResponse({"errores": errores}, status=400)
+
+            try:
+                with transaction.atomic():
+                    self.crear_usuarios_temporales(df, rol_alta, request)
+                return JsonResponse({"message": "Usuarios creados exitosamente."})
+            except Exception as e:
+                return JsonResponse({"error": str(e)}, status=500)
+
+        return JsonResponse({"error": "No se cargó ningún archivo."}, status=400)
+
+    def generar_plantilla_excel(self, rol_alta):
+        columnas = {
+            "jugadores": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+            "delegados": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+            "árbitros": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+            "coadministradores": ["Nombre", "Apellido", "Alias", "Email", "Tipo de Identificación", "Número de Identificación", "Sexo", "Fecha de Nacimiento", "Teléfono"],
+        }
+        df = pd.DataFrame(columns=columnas.get(rol_alta, []))
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Plantilla")
+        output.seek(0)
+        return output
+
+    def validar_datos(self, df, rol_alta):
+        columnas_requeridas = [
+            "Nombre", "Apellido", "Alias", "Email",
+            "Tipo de Identificación", "Número de Identificación",
+            "Sexo", "Fecha de Nacimiento", "Teléfono"
+        ]
+        errores = []
+
+        faltantes = [col for col in columnas_requeridas if col not in df.columns]
+        if faltantes:
+            errores.append(f"Faltan las siguientes columnas: {', '.join(faltantes)}")
+            return errores
+
+        for index, row in df.iterrows():
+            fila_errores = []
+
+            email = row.get("Email", "").strip()
+            if not email:
+                fila_errores.append("El email es obligatorio.")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                fila_errores.append("El formato del email es inválido.")
+            elif User.objects.filter(email=email).exists():
+                fila_errores.append("El email ya está en uso.")
+
+            tipo_identificacion = row.get("Tipo de Identificación", "").strip()
+            if not tipo_identificacion:
+                fila_errores.append("El tipo de identificación es obligatorio.")
+            elif not TiposIdentificacion.objects.filter(Codigo=tipo_identificacion).exists():
+                fila_errores.append(f"El tipo de identificación '{tipo_identificacion}' no es válido.")
+
+            sexo = row.get("Sexo", "").strip()
+            if not sexo:
+                fila_errores.append("El sexo es obligatorio.")
+            elif not Sexos.objects.filter(SexoId=sexo).exists():
+                fila_errores.append(f"El valor '{sexo}' no es un sexo válido.")
+
+            fecha_nacimiento = row.get("Fecha de Nacimiento", "").strip()
+            if not fecha_nacimiento:
+                fila_errores.append("La fecha de nacimiento es obligatoria.")
+            else:
+                try:
+                    datetime.strptime(fecha_nacimiento, "%d/%m/%Y")
+                except ValueError:
+                    fila_errores.append(f"La fecha de nacimiento '{fecha_nacimiento}' debe estar en formato DD/MM/YYYY.")
+
+            if fila_errores:
+                errores.append(f"Errores en fila {index + 1}: {', '.join(fila_errores)}")
+
+        return errores
+
+    def crear_usuarios_temporales(self, df, rol_alta, request):
+        errores = []
+        for _, row in df.iterrows():
+            try:
+                UsuariosTemporales.objects.create(
+                    nombre=row.get("Nombre"),
+                    apellido=row.get("Apellido"),
+                    alias=row.get("Alias"),
+                    email=row.get("Email"),
+                    tipo_identificacion=row.get("Tipo de Identificación"),
+                    numero_identificacion=row.get("Número de Identificación"),
+                    sexo=row.get("Sexo"),
+                    fecha_nacimiento=row.get("Fecha de Nacimiento"),
+                    telefono=row.get("Teléfono"),
+                    rol=rol_alta,
+                    creado_por=request.user
+                )
+            except Exception as e:
+                errores.append(f"Error en fila {row.name + 1}: {str(e)}")
+
+        if errores:
+            raise Exception("Errores al crear usuarios temporales.")
+
+    def confirmar_usuarios(self, request, *args, **kwargs):
+        usuarios_temporales = UsuariosTemporales.objects.filter(creado_por=request.user)
+        errores = []
+
+        try:
+            with transaction.atomic():
+                for ut in usuarios_temporales:
+                    usuario = User.objects.create_user(
+                        username=ut.email,
+                        email=ut.email,
+                        password=ut.numero_identificacion,
+                        first_name=ut.nombre,
+                        last_name=ut.apellido,
+                        is_active=True
+                    )
+
+                    grupo = Group.objects.get(name=ut.rol.capitalize())
+                    usuario.groups.add(grupo)
+
+                    tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=ut.tipo_identificacion)
+                    sexo_obj = Sexos.objects.get(SexoId=ut.sexo)
+
+                    Personas.objects.create(
+                        UserID=usuario,
+                        Alias=ut.alias,
+                        TipoIdentificacionID=tipo_identificacion_obj,
+                        NroIdentificacion=ut.numero_identificacion,
+                        SexoID=sexo_obj,
+                        FechaNacimiento=ut.fecha_nacimiento,
+                        Telefono=ut.telefono,
+                    )
+                UsuariosTemporales.objects.filter(creado_por=request.user).delete()
+        except Exception as e:
+            errores.append(str(e))
+
+        if errores:
+            return JsonResponse({"error": errores}, status=500)
+        return JsonResponse({"message": "Usuarios confirmados exitosamente."})
+
+    def cancelar_usuarios(self, request, *args, **kwargs):
+        UsuariosTemporales.objects.filter(creado_por=request.user).delete()
+        return JsonResponse({"message": "Proceso cancelado y datos eliminados temporalmente."})
