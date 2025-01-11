@@ -10,11 +10,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authtoken.models import Token     
-from rest_framework.exceptions import ValidationError as DRFValidationError   
-from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion      
-'''Agregados para envío y verif. de mail al registrarse'''          
+from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from allauth.account.models import EmailAddress
+from .models import Personas, TiposIdentificacion
+'''Agregados para envío y verif. de mail al registrarse'''
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode

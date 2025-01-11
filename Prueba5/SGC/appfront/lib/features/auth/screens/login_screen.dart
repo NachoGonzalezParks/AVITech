@@ -43,24 +43,18 @@ class LoginScreenState extends State<LoginScreen> {
             onPressed: () async {
               String email = emailController.text;
               String password = passwordController.text;
-
               final messenger = ScaffoldMessenger.of(context);
               final currentContext = context;
-
               var response = await Provider.of<ApiService>(currentContext, listen: false).login(email, password);
-
               if (!context.mounted) return;
-
               if (response['success']) {
-
                   var userDetails = {
                     'first_name': response['first_name'],
                     'last_name': response['last_name'],
                     'username': response['username'],
                     'email': response['email'],
                     'groups': response['groups'],
-                  };
-                
+                  };                
                 Navigator.pushReplacementNamed(
                   currentContext,
                   '/home',

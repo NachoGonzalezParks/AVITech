@@ -130,25 +130,33 @@ class RegisterScreenState extends State<RegisterScreen> {
 
               if (password1 != password2) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Passwords do not match')),
+                  const SnackBar(content: Text('Las contraseñas no coinciden')),
                 );
                 return;
               }
 
-              var currentContext = context;
-              var response = await Provider.of<ApiService>(currentContext, listen: false)
-                  .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono);
+              try {
+                var currentContext = context;
+                var response = await Provider.of<ApiService>(currentContext, listen: false)
+                    .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono)
+                    .timeout(const Duration(seconds: 10));  // Timeout de 10 segundos
 
-              if (!context.mounted) return;
+                if (!context.mounted) return;
 
-              if (response['success']) {
-                Navigator.pushReplacementNamed(context, '/login');
-              } else {
+                if (response['success']) {
+                  Navigator.pushReplacementNamed(context, '/login');
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(response['message'])),
+                  );
+                }
+              } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(response['message'])),
+                  SnackBar(content: Text('Error durante el registro: $e')),
                 );
               }
             },
+
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.secondary,
               foregroundColor: colorScheme.onSecondary,
