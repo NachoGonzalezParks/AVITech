@@ -352,3 +352,92 @@ class IncidenciasJugadores(models.Model):
     def __str__(self):
         return f"Incidencia jugador {self.IncidenciaJugadorID}"
 
+'''----------------Falta revisar de aca  para abajo (datos iniciales)------'''
+
+class TablaPosiciones(models.Model):
+    TablaPosicionesID = models.AutoField(primary_key=True)
+    TorneoID = models.ForeignKey('Torneos', on_delete=models.PROTECT)
+    FaseID = models.ForeignKey('Fases', on_delete=models.PROTECT)
+    ZonaID = models.ForeignKey('Zonas', on_delete=models.PROTECT)
+    EquipoID = models.ForeignKey('Equipos', on_delete=models.PROTECT)
+    PartidosJugados = models.IntegerField(default=0)
+    Puntos = models.IntegerField(default=0)
+    Ganados = models.IntegerField(default=0)
+    Empatados = models.IntegerField(default=0)
+    Perdidos = models.IntegerField(default=0)
+    GolesFavor = models.IntegerField(default=0)
+    GolesContra = models.IntegerField(default=0)
+    DiferenciaGoles = models.IntegerField(default=0)
+    CriterioDesempate = models.CharField(max_length=255, blank=True, null=True)
+    PosicionDestacada = models.CharField(max_length=255, blank=True, null=True)
+
+class Suspensiones(models.Model):
+    SuspensionID = models.AutoField(primary_key=True)
+    EquipoID = models.ForeignKey('Equipos', on_delete=models.PROTECT)
+    JugadorID = models.ForeignKey('Jugadores', on_delete=models.PROTECT)
+    Fecha = models.DateField()
+    FechasSuspension = models.IntegerField(default=0)
+    DetalleInforme = models.CharField(max_length=255, blank=True, null=True)
+
+class ReemplazosPartidos(models.Model):
+    ReemplazoPartidoID = models.AutoField(primary_key=True)
+    PartidoID = models.ForeignKey('Partidos', on_delete=models.PROTECT)
+    JugadorEntraID = models.ForeignKey('Jugadores', on_delete=models.PROTECT, related_name='jugador_entra')
+    JugadorSaleID = models.ForeignKey('Jugadores', on_delete=models.PROTECT, related_name='jugador_sale')
+    MinutoReemplazo = models.IntegerField()
+
+class TiposNotificaciones(models.Model):
+    TipoNotificacionID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=50)
+
+class Notificaciones(models.Model):
+    NotificacionID = models.AutoField(primary_key=True)
+    TipoNotificacionID = models.ForeignKey('TiposNotificaciones', on_delete=models.PROTECT)
+    Generador = models.CharField(max_length=50)
+    FechaHoraEvento = models.DateTimeField()
+    FechaHoraNotificacion = models.DateTimeField()
+    Detalle = models.CharField(max_length=255)
+
+class TiposRespuestasNotificaciones(models.Model):
+    TiposRespuestasNotificacionesID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=20)
+
+class RespuestasNotificaciones(models.Model):
+    RespuestaID = models.AutoField(primary_key=True)
+    NotificacionID = models.ForeignKey('Notificaciones', on_delete=models.PROTECT)
+    DestinatarioID = models.ForeignKey(User, on_delete=models.PROTECT)
+    FechaHoraRespuesta = models.DateTimeField()
+    TiposRespuestasNotificacionesID = models.ForeignKey('TiposRespuestasNotificaciones', on_delete=models.PROTECT)
+    Contenido = models.CharField(max_length=255)
+
+class NotificacionesDestinatarios(models.Model):
+    NotificacionID = models.ForeignKey('Notificaciones', on_delete=models.PROTECT)
+    DestinatarioID = models.ForeignKey(User, on_delete=models.PROTECT)
+    TipoDestinatario = models.CharField(max_length=50)
+    class Meta:
+        unique_together = ('NotificacionID', 'DestinatarioID', 'TipoDestinatario')
+
+class Anunciantes(models.Model):
+    AnuncianteID = models.AutoField(primary_key=True)
+    Nombre = models.CharField(max_length=255)
+
+class Publicidad(models.Model):
+    PublicidadID = models.AutoField(primary_key=True)
+    Tipo = models.CharField(max_length=50)
+    Formato = models.CharField(max_length=50)
+    Comportamiento = models.CharField(max_length=50)
+    Duracion = models.IntegerField()
+    Frecuencia = models.IntegerField()
+    Ubicacion = models.CharField(max_length=100)
+    Link = models.URLField(max_length=255, blank=True, null=True)
+    Objetivo = models.CharField(max_length=100, blank=True, null=True)
+    VigenciaDesde = models.DateTimeField()
+    VigenciaHasta = models.DateTimeField()
+    AnuncianteID = models.ForeignKey('Anunciantes', on_delete=models.PROTECT)
+
+class PublicidadVisualizaciones(models.Model):
+    VisualizacionID = models.AutoField(primary_key=True)
+    PublicidadID = models.ForeignKey('Publicidad', on_delete=models.PROTECT)
+    UsuarioID = models.ForeignKey(User, on_delete=models.PROTECT)
+    FechaHoraVisualizacion = models.DateTimeField()
+    DuracionSegundos = models.IntegerField(default=0)
