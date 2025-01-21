@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Depurador de Python: Django",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "C:\\xampp\\htdocs\\AVITech\\Prueba5\\SGC\\manage.py",
+            "args": [
+                "runserver",
+                "--noreload"
+            ],
+            "django": true,
+            "console": "integratedTerminal",
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "SGC.settings",
+                "VIRTUAL_ENV": "C:\\xampp\\htdocs\\AVITech\\Prueba5\\entorno_SGC",
+                "PATH": "C:\\xampp\\htdocs\\AVITech\\Prueba5\\entorno_SGC\\Scripts"
+            },
+            "justMyCode": true
+        }
+    ]
+}

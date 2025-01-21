@@ -73,9 +73,25 @@ class Personas(models.Model):
     FechaNacimiento = models.DateField()
     Telefono = models.CharField(max_length=20)
     SexoID = models.ForeignKey(Sexos, on_delete=models.PROTECT, null=True, blank=True) # cambiar null=True, blank=True por default=1 (o el que corresponda) luego de agregar datos
+    first_login = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.Nombre} {self.Alias} {self.Apellido}"
+        return f"{self.Nombre} {self.Alias} {self.Apellido} "
+
+
+class LoginPersona(models.Model):
+    id = models.IntegerField(primary_key=True) 
+    mail = models.EmailField(unique=True, max_length=255) 
+
+    def __str__(self):
+        return self.mail
+
+    # class Meta:
+    #     db_table = 'login_personas' 
+    #     verbose_name = 'Persona Login'
+    #     verbose_name_plural = 'Personas Login'
+    #     return f"{self.Nombre} {self.Alias} {self.Apellido}"
+
 
 # Tipos disciplinas (Masculina, femenino, mixto...)
 class TiposDisciplinas(models.Model):
@@ -84,6 +100,7 @@ class TiposDisciplinas(models.Model):
 
     def __str__(self):
         return self.Nombre
+
 
 # Tabla de disciplinas
 class Disciplinas(models.Model):
@@ -149,7 +166,6 @@ class EstadosTorneos(models.Model):   # Iniciado, Terminado, Preparado Sin comen
         return self.Nombre
 
 
-
 class Torneos(models.Model):
     TorneoID = models.AutoField(primary_key=True)
     Nombre = models.CharField(max_length=50)
@@ -172,7 +188,6 @@ class Torneos(models.Model):
         return self.Nombre
 
 
-
 class Equipos(models.Model):
     EquipoID = models.AutoField(primary_key=True)
     Nombre = models.CharField(max_length=50)
@@ -185,12 +200,14 @@ class Equipos(models.Model):
     def __str__(self):
         return self.Nombre
 
+
 class RolesEquipo(models.Model):    # Roles en principio: jugador ó tecnico
     RolID = models.AutoField(primary_key=True)
     Nombre = models.CharField(max_length=50)
 
     def __str__(self):
             return self.Nombre
+
 
 class Jugadores(models.Model):
     JugadorID = models.AutoField(primary_key=True)
@@ -204,6 +221,7 @@ class Jugadores(models.Model):
     def __str__(self):
         return f"{self.UserID} - {self.EquipoID}"
 
+
 class SubAdministradores(models.Model):
     SubAdministradorID = models.AutoField(primary_key=True)
     UserID = models.ForeignKey(User, on_delete=models.PROTECT) # Con auth_User, no con Appback_Personas
@@ -212,6 +230,7 @@ class SubAdministradores(models.Model):
 
     def __str__(self):
         return f"{self.UserID} - {self.TorneoID}"
+
 
 class Arbitros(models.Model):
     ArbitroID = models.AutoField(primary_key=True)
@@ -236,7 +255,6 @@ class Delegados(models.Model):
     def __str__(self):
         return f"{self.UserID} - {self.TorneoID}"    
     
-
 
 class Fases(models.Model):
     FaseID = models.AutoField(primary_key=True)
@@ -320,6 +338,7 @@ class TiposIncidencias(models.Model):   # Gol, Gol en contra, Amonestación, Exp
 
     def __str__(self):
         return self.Nombre
+
 
 class IncidenciasGenerales(models.Model):   
     IncidenciaGeneralID = models.AutoField(primary_key=True)
@@ -441,3 +460,17 @@ class PublicidadVisualizaciones(models.Model):
     UsuarioID = models.ForeignKey(User, on_delete=models.PROTECT)
     FechaHoraVisualizacion = models.DateTimeField()
     DuracionSegundos = models.IntegerField(default=0)
+
+class UsuariosTemporales(models.Model):
+    nombre = models.CharField(max_length=255)
+    apellido = models.CharField(max_length=255)
+    alias = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    tipo_identificacion = models.CharField(max_length=50)
+    numero_identificacion = models.CharField(max_length=50)
+    sexo = models.CharField(max_length=10)
+    fecha_nacimiento = models.DateField()
+    telefono = models.CharField(max_length=20)
+    rol = models.CharField(max_length=50)
+    creado_por = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)

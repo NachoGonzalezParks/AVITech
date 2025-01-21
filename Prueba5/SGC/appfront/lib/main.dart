@@ -1,10 +1,12 @@
+// FLUTTER
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:appfront/api_service.dart';
-import 'package:appfront/screens/landing_screen.dart';
-import 'package:appfront/screens/login_screen.dart';
-import 'package:appfront/screens/register_screen.dart';
-import 'package:appfront/screens/home_screen.dart';
+// API_SERVICE
+import 'package:appfront/data/repositories/api_service.dart';
+// ROUTES
+import 'package:appfront/routes/app_routes.dart';
+// THEME
+import 'package:appfront/themes/app_theme.dart';
 
 void main() {
   runApp(
@@ -26,27 +28,12 @@ class ZeusApp extends StatelessWidget {
       create: (context) => ZeusAppState(),
       child: MaterialApp(
         title: 'SGC',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0D1321), // Color primario (azul oscuro)
-            secondary: Color.fromRGBO(209, 95, 13, 1), // Color secundario (naranja complementario)
-          ),
-        ),
-        initialRoute: '/landing',
-        routes: {
-          '/landing': (context) => const LandingScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          '/home': (context) => const HomeScreen(),
-        },
-      ),      
-
+        theme: AppTheme.buildTheme(),
+        initialRoute: AppRoutes.initialRoute,
+        routes: AppRoutes.routes,
+      ),
     );
   }
 }
 
-
-class ZeusAppState extends ChangeNotifier {
-
-}
+class ZeusAppState extends ChangeNotifier {}
