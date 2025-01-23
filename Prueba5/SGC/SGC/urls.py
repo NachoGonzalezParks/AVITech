@@ -46,9 +46,12 @@ urlpatterns = [
     path('activacion/<str:uidb64>/<str:token>/', views.activacion, name='activacion'),    
     path('reset/<str:uidb64>/<str:token>/', views.nuevo_pass, name='nuevo_pass'),    
     path('login/', views.login_usuario, name='login_usuario'),
-    path('mail_password_reset/', views.mail_password_reset, name='mail_password_reset'),   
-    path('alta-usuarios/', views.AltaUsuariosView.as_view(), name='alta_usuarios')
+    path('mail_password_reset/', views.mail_password_reset, name='mail_password_reset'),       
+    path('alta-usuarios/', views.AltaUsuariosView.as_view(), name='alta_usuarios'),
+    path('listar_paises/', views.listar_paises, name='listar_paises'),
+    path('listar_tipos_identificacion_por_pais/', views.listar_tipos_identificacion_por_pais, name='listar_tipos_identificacion_por_pais'),
+    path('listar_sexos/', views.listar_sexos, name='listar_sexos')
 ]
 
-
+ 
 

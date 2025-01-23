@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales                         
+from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales, Paises                         
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -34,6 +34,58 @@ import re
 from io import BytesIO
 from datetime import datetime
 logger = logging.getLogger(__name__)
+
+
+@api_view(['POST'])
+def listar_paises(request):
+    # Esta vista devuleve la lista de paises
+    try:
+        paises = Paises.objects.all().order_by('PaisID') # Por ahora Ordenado por Id, no por nombre
+        if not paises.exists():
+            return Response({'error': 'No hay registros de países en la base de datos.'}, status=404)
+        
+        paises_list = [pais.Nombre for pais in paises]
+        return Response({'paises': paises_list}, status=200)
+    except Exception as e:
+        return Response({'error': f'Ocurrió un error: {str(e)}'}, status=500)
+    
+
+@api_view(['POST'])
+def listar_tipos_identificacion_por_pais(request):
+    # Esta vista devuelve los tipos de identificación del pais elegido. Devuelve el código (DNI, RUF etc., no la descipción larga)
+    # Debe recibir el nombre del pais (nombre_pais)
+    try:
+        nombre_pais = request.data.get('nombre_pais')
+        if not nombre_pais:
+            return Response({'error': 'El nombre del país es requerido.'}, status=400)
+        
+        pais = Paises.objects.filter(Nombre=nombre_pais).first()
+        if not pais:
+            return Response({'error': 'El país especificado no existe en la base de datos.'}, status=404)
+        
+        tipos_identificacion = TiposIdentificacion.objects.filter(PaisID=pais)
+        if not tipos_identificacion.exists():
+            return Response({'error': f'No hay tipos de identificación disponibles para el país {nombre_pais}.'}, status=404)
+        
+        tipos_list = [tipo.Codigo for tipo in tipos_identificacion]
+        return Response({'tipos_identificacion': tipos_list}, status=200)
+    except Exception as e:
+        return Response({'error': f'Ocurrió un error: {str(e)}'}, status=500)
+
+
+@api_view(['POST'])
+def listar_sexos(request):
+    # Esta vista devuelve los registros de la tabla Sexos
+    try:
+        sexos = Sexos.objects.all()
+        if not sexos.exists():
+            return Response({'error': 'No hay registros de sexos en la base de datos.'}, status=404)
+        
+        sexos_list = [sexo.Nombre for sexo in sexos]
+        return Response({'sexos': sexos_list}, status=200)
+    except Exception as e:
+        return Response({'error': f'Ocurrió un error: {str(e)}'}, status=500)
+
 
 
 @api_view(['POST'])
@@ -58,7 +110,8 @@ def email_existe(request):
 def registro_usuario(request):   
     # Esta vista crea un nuevo usuario y envía el mail de verificación 
     # Debe recibir: email, password1, password2, nombre, apellido, 
-    #               tipo_identificacion, numero_identificacion, sexo fecha_nacimiento
+    #               pais (del tipo de identificación), tipo_identificacion, numero_identificacion, 
+    #               sexo, fecha_nacimiento
     #   opcionales: alias, telefono       
     username = request.data.get('email')
     email = request.data.get('email')
@@ -67,6 +120,7 @@ def registro_usuario(request):
     nombre = request.data.get('nombre')
     apellido = request.data.get('apellido')
     alias = request.data.get('alias')
+    pais = request.data.get('pais')
     tipo_identificacion = request.data.get('tipo_identificacion')
     numero_identificacion = request.data.get('numero_identificacion')
     sexo = request.data.get('sexo')
@@ -108,9 +162,11 @@ def registro_usuario(request):
         )
      
         token = Token.objects.create(user=user)        
-        tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion)   
+        
+        codigo_pais = Paises.objects.get(Nombre=pais)
+        tipo_identificacion_obj = TiposIdentificacion.objects.get(Codigo=tipo_identificacion, PaisID=codigo_pais)            
 
-        codigosexo = Sexos.objects.get(SexoId=sexo)
+        codigo_sexo = Sexos.objects.get(Nombre=sexo)        
     
         persona = Personas.objects.create(
             UserID=user,
@@ -119,7 +175,7 @@ def registro_usuario(request):
             Alias=alias, #request.data['alias'],
             TipoIdentificacionID=tipo_identificacion_obj,
             NroIdentificacion= numero_identificacion, #request.data['numero_identificacion'],
-            SexoID=codigosexo,
+            SexoID=codigo_sexo,
             FechaNacimiento=fecha_nacimiento, #request.data['fecha_nacimiento'],
             Telefono=telefono #request.data['telefono']
         )
