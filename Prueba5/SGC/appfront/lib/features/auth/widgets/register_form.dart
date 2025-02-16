@@ -17,6 +17,7 @@ class RegisterFormState extends State<RegisterForm> {
   final TextEditingController nombreController = TextEditingController();
   final TextEditingController apellidoController = TextEditingController();
   final TextEditingController aliasController = TextEditingController();
+  final TextEditingController sexoController = TextEditingController();
   final TextEditingController numeroIdentificacionController = TextEditingController();
   final TextEditingController fechaNacimientoController = TextEditingController();
   final TextEditingController telefonoController = TextEditingController();
@@ -115,6 +116,10 @@ class RegisterFormState extends State<RegisterForm> {
                 decoration: const InputDecoration(labelText: 'Alias'),
               ),
               TextFormField(
+                controller: sexoController,
+                decoration: const InputDecoration(labelText: 'Sexo'),
+              ),
+              TextFormField(
                 controller: emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
               ),
@@ -194,6 +199,7 @@ class RegisterFormState extends State<RegisterForm> {
                           String nombre = nombreController.text;
                           String apellido = apellidoController.text;
                           String alias = aliasController.text;
+                          String sexo = sexoController.text;
                           String tipoIdentificacion = selectedTipoIdentificacion ?? '';
                           String numeroIdentificacion = numeroIdentificacionController.text;
                           String fechaNacimiento = _convertDateFormat(fechaNacimientoController.text);
@@ -204,7 +210,7 @@ class RegisterFormState extends State<RegisterForm> {
 
                           try {
                             var response = await Provider.of<ApiService>(currentContext, listen: false)
-                                .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono);
+                                .register(email, password1, password2, nombre, apellido, alias, sexo, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono);
 
                             // print(response);
 
@@ -231,6 +237,8 @@ class RegisterFormState extends State<RegisterForm> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
                 child: const Text('Registrarse'),

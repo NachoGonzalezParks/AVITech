@@ -57,7 +57,7 @@ class ApiService extends ChangeNotifier {
   }
 
 
-  Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono) async {
+  Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String sexo, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono) async {
     _setLoading(true);
     final response = await http.post(
 
@@ -69,6 +69,7 @@ class ApiService extends ChangeNotifier {
         'nombre' : nombre,
         'apellido' : apellido,
         'alias' : alias,
+        'sexo' : sexo,
         'tipo_identificacion' : tipoIdentificacion,
         'numero_identificacion' : numeroIdentificacion,
         'fecha_nacimiento' : fechaNacimiento,
