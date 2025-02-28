@@ -138,7 +138,7 @@ class RegisterScreenState extends State<RegisterScreen> {
               try {
                 var currentContext = context;
                 var response = await Provider.of<ApiService>(currentContext, listen: false)
-                    .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono)
+                    .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono, '')
                     .timeout(const Duration(seconds: 10));  // Timeout de 10 segundos
 
                 if (!context.mounted) return;
