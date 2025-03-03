@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:appfront/core/constants/navbar.dart';
+import 'package:appfront/core/utils/responsive.dart';
 import 'package:appfront/features/auth/screens/landing_screen.dart';
 
 class AppStructure extends StatelessWidget {
@@ -18,7 +19,14 @@ class AppStructure extends StatelessWidget {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: bodyContent,
+          child: ResponsiveWidget(
+            mobile: bodyContent,
+            tablet: bodyContent,
+            desktop: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: bodyContent,
+            ),
+          ),
         ),
       ),
     );
