@@ -89,6 +89,8 @@ class LoginFormState extends State<LoginForm> {
               }
             },
             style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+              foregroundColor: Theme.of(context).colorScheme.onSecondary,
               padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
             ),
             child: const Text('Iniciar Sesión'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appfront/core/constants/app_structure.dart';
 import 'package:appfront/features/auth/widgets/auth_modal.dart';
+import 'package:appfront/core/utils/responsive.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -19,51 +20,45 @@ class LandingScreenState extends State<LandingScreen> {
   }
 
   Widget _accessSection() {
-    return Expanded(
-      child: Center(
-        child: showAdminContent
-            ? AuthModal()
-            : Text('Descarga la app desde la Play Store usando el QR'),
-      ),
+    return Center(
+      child: showAdminContent
+          ? AuthModal()
+          : Text('Descarga la app desde la Play Store usando el QR'),
     );
   }
 
   Widget _introSection() {
-    return Expanded(
-      child: Center(
-        child: Text(
-          showAdminContent
-              ? 'Descripción de uso para administradores (LS)'
-              : 'Descripción de uso para jugadores (LS)',
-        ),
-      ),
+    return Center(
+      child: showAdminContent
+          ? Text('Descripción de uso para administradores')
+          : Text('Descripción de uso para jugadores'),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
     return AppStructure(
-      bodyContent: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isMobile = MediaQuery.of(context).size.width < 600;
-
-          if (isMobile) {
-            return Column(
-              children: [
-                _accessSection(),
-                _introSection(),
-              ],
-            );
-          } else {
-            return Row(
-              children: [
-                Expanded(child: _accessSection()),
-                Expanded(child: _introSection()),
-              ],
-            );
-          }
-        },
+      bodyContent: ResponsiveWidget(
+        mobile: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _accessSection(),
+            SizedBox(height: 16),
+            _introSection(),
+          ],
+        ),
+        tablet: Row(
+          children: [
+            Expanded(child: _accessSection()),
+            Expanded(child: _introSection()),
+          ],
+        ),
+        desktop: Row(
+          children: [
+            Expanded(child: _accessSection()),
+            Expanded(child: _introSection()),
+          ],
+        ),
       ),
     );
   }

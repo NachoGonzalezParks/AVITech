@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:appfront/core/utils/responsive.dart'; // Importa tu ResponsiveWidget
 
 class NavBar extends StatelessWidget implements PreferredSizeWidget {
   final Function(bool) onAdminSelected;
@@ -21,6 +22,7 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
     return AppBar(
       backgroundColor: colorScheme.primary,
       elevation: 0,
@@ -43,13 +45,44 @@ class NavBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           Expanded(
             flex: 3,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: _getActions(context),
+            child: ResponsiveWidget(
+              mobile: _mobileMenu(context), // Menú en móviles
+              tablet: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: _getActions(context),
+              ),
+              desktop: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: _getActions(context),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Menú desplegable para móviles
+  Widget _mobileMenu(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.menu, color: Colors.white),
+      onSelected: (String value) {
+        if (value == 'jugadores') {
+          onAdminSelected(false);
+        } else if (value == 'administradores') {
+          onAdminSelected(true);
+        }
+      },
+      itemBuilder: (BuildContext context) => [
+        PopupMenuItem<String>(
+          value: 'jugadores',
+          child: Text('Jugadores'),
+        ),
+        PopupMenuItem<String>(
+          value: 'administradores',
+          child: Text('Administradores'),
+        ),
+      ],
     );
   }
 
