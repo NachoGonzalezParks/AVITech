@@ -30,7 +30,7 @@ class AuthModalState extends State<AuthModal> with SingleTickerProviderStateMixi
             ],
           ),
           Container(
-            height: 500,
+            height: 600,
             padding: EdgeInsets.all(16),
             child: TabBarView(
               controller: _tabController,

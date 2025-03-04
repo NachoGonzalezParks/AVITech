@@ -17,7 +17,7 @@ class RegisterFormState extends State<RegisterForm> {
   final TextEditingController nombreController = TextEditingController();
   final TextEditingController apellidoController = TextEditingController();
   final TextEditingController aliasController = TextEditingController();
-  final TextEditingController sexoController = TextEditingController();
+  //final TextEditingController sexoController = TextEditingController();
   final TextEditingController numeroIdentificacionController = TextEditingController();
   final TextEditingController fechaNacimientoController = TextEditingController();
   final TextEditingController telefonoController = TextEditingController();
@@ -25,7 +25,9 @@ class RegisterFormState extends State<RegisterForm> {
   List<String> tipoIdentificacionOptions = []; // Lista de tipos de identificación
   String? selectedTipoIdentificacion;
   String? selectedPais; // Variable para almacenar el país seleccionado
+  String? selectedSexo; // Variable para almacenar el sexo seleccionado
   List<String> paises = []; // Lista de países
+  List<String> sexos = []; // Lista de sexos
   final _formKey = GlobalKey<FormState>();
   bool _isRegistering = false;
 
@@ -37,7 +39,33 @@ class RegisterFormState extends State<RegisterForm> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarPaises();
     });
+
+    // Retrasar la llamada a _cargarSexos hasta que el contexto esté listo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarSexos();
+    });
+
   }
+
+
+  // Método para cargar la lista de sexos desde el backend
+  Future<void> _cargarSexos() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final listaSexos = await apiService.listarSexos(); // Obtener la lista de sexos
+
+      setState(() {
+        sexos = listaSexos; // Asignar la lista de nombres de países
+        selectedSexo = sexos.isNotEmpty ? sexos[0] : null; // Seleccionar el primer sexo por defecto
+      });
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar sexos: $e')),
+      );
+    }
+  }
+
 
   // Método para cargar la lista de países desde el backend
   Future<void> _cargarPaises() async {
@@ -116,6 +144,7 @@ class RegisterFormState extends State<RegisterForm> {
         numeroIdentificacionController.text.isEmpty ||
         fechaNacimientoController.text.isEmpty ||
         telefonoController.text.isEmpty ||
+        selectedSexo == null ||        
         selectedPais == null) { // Validar que se seleccione un país
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Todos los campos son obligatorios.')),
@@ -135,191 +164,217 @@ class RegisterFormState extends State<RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: nombreController,
-                      decoration: const InputDecoration(labelText: 'Nombre'),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Todos los campos del formulario aquí...
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: nombreController,
+                            decoration: const InputDecoration(labelText: 'Nombre'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: apellidoController,
+                            decoration: const InputDecoration(labelText: 'Apellido'),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: apellidoController,
-                      decoration: const InputDecoration(labelText: 'Apellido'),
+                    TextFormField(
+                      controller: aliasController,
+                      decoration: const InputDecoration(labelText: 'Alias'),
                     ),
-                  ),
-                ],
-              ),
-              TextFormField(
-                controller: aliasController,
-                decoration: const InputDecoration(labelText: 'Alias'),
-              ),
-              TextFormField(
-                controller: sexoController,
-                decoration: const InputDecoration(labelText: 'Sexo'),
-              ),
-              TextFormField(
-                controller: emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              // Desplegable de países
-              DropdownButtonFormField<String>(
-                value: selectedPais,
-                decoration: const InputDecoration(labelText: 'País'),
-                items: paises.map((pais) {
-                  return DropdownMenuItem<String>(
-                    value: pais,
-                    child: Text(pais),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) async {
-                  setState(() {
-                    selectedPais = newValue;
-                  });
-
-                  // Cargar los tipos de identificación para el nuevo país seleccionado
-                  if (newValue != null) {
-                    await _cargarTiposIdentificacion(newValue);
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, selecciona un país';
-                  }
-                  return null;
-                },
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: selectedTipoIdentificacion,
-                      decoration: const InputDecoration(labelText: 'Tipo de Documento'),
-                      items: tipoIdentificacionOptions.map((String option) {
+                    TextFormField(
+                      controller: emailController,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                    ),
+                    // Desplegable de sexos
+                    DropdownButtonFormField<String>(
+                      value: selectedSexo,
+                      decoration: const InputDecoration(labelText: 'Sexo'),
+                      items: sexos.map((sexo) {
                         return DropdownMenuItem<String>(
-                          value: option,
-                          child: Text(option),
+                          value: sexo,
+                          child: Text(sexo),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
+                      onChanged: (String? newValue) async {
                         setState(() {
-                          selectedTipoIdentificacion = newValue;
+                          selectedSexo = newValue;
                         });
                       },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor, selecciona un sexo';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: numeroIdentificacionController,
-                      decoration: const InputDecoration(labelText: 'Documento'),
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: telefonoController,
-                      decoration: const InputDecoration(labelText: 'Teléfono'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _selectDate(context),
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: fechaNacimientoController,
-                          decoration: const InputDecoration(labelText: 'Fecha de Nacimiento'),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              TextFormField(
-                controller: password1Controller,
-                decoration: const InputDecoration(labelText: 'Contraseña'),
-                obscureText: true,
-              ),
-              TextFormField(
-                controller: password2Controller,
-                decoration: const InputDecoration(labelText: 'Repite tu contraseña'),
-                obscureText: true,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isRegistering
-                    ? null
-                    : () async {
-                        if (_validateFields()) {
-                          setState(() {
-                            _isRegistering = true;
-                          });
+                    // Desplegable de países
+                    DropdownButtonFormField<String>(
+                      value: selectedPais,
+                      decoration: const InputDecoration(labelText: 'País'),
+                      items: paises.map((pais) {
+                        return DropdownMenuItem<String>(
+                          value: pais,
+                          child: Text(pais),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) async {
+                        setState(() {
+                          selectedPais = newValue;
+                        });
 
-                          String email = emailController.text;
-                          String password1 = password1Controller.text;
-                          String password2 = password2Controller.text;
-                          String nombre = nombreController.text;
-                          String apellido = apellidoController.text;
-                          String alias = aliasController.text;
-                          String sexo = sexoController.text;
-                          String tipoIdentificacion = selectedTipoIdentificacion ?? '';
-                          String numeroIdentificacion = numeroIdentificacionController.text;
-                          String fechaNacimiento = _convertDateFormat(fechaNacimientoController.text);
-                          String telefono = telefonoController.text;
-                          String pais = selectedPais ?? ''; // Agregar el país seleccionado
-                          
-                          final messenger = ScaffoldMessenger.of(context);
-                          final currentContext = context;
-
-                          try {
-                            var response = await Provider.of<ApiService>(currentContext, listen: false)
-                                .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono, pais);
-
-                            if (!context.mounted) return;
-
-                            if (response['success']) {
-                              messenger.showSnackBar(
-                                const SnackBar(content: Text('Cuenta registrada')),
-                              );
-                            } else {
-                              messenger.showSnackBar(
-                                SnackBar(content: Text(response['message'] ?? 'Error desconocido')),
-                              );
-                            }
-                          } catch (e) {
-                            messenger.showSnackBar(
-                              SnackBar(content: Text('Error al conectar con el servidor: $e')),
-                            );
-                          } finally {
-                            setState(() {
-                              _isRegistering = false;
-                            });
-                          }
+                        // Cargar los tipos de identificación para el nuevo país seleccionado
+                        if (newValue != null) {
+                          await _cargarTiposIdentificacion(newValue);
                         }
                       },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor, selecciona un país';
+                        }
+                        return null;
+                      },
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedTipoIdentificacion,
+                            decoration: const InputDecoration(labelText: 'Tipo de Documento'),
+                            items: tipoIdentificacionOptions.map((String option) {
+                              return DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(option),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedTipoIdentificacion = newValue;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: numeroIdentificacionController,
+                            decoration: const InputDecoration(labelText: 'Documento'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: telefonoController,
+                            decoration: const InputDecoration(labelText: 'Teléfono'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _selectDate(context),
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                controller: fechaNacimientoController,
+                                decoration: const InputDecoration(labelText: 'Fecha de Nacimiento'),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    TextFormField(
+                      controller: password1Controller,
+                      decoration: const InputDecoration(labelText: 'Contraseña'),
+                      obscureText: true,
+                    ),
+                    TextFormField(
+                      controller: password2Controller,
+                      decoration: const InputDecoration(labelText: 'Repite tu contraseña'),
+                      obscureText: true,
+                    ),
+                  ],
                 ),
-                child: const Text('Registrarse'),
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _isRegistering
+                ? null
+                : () async {
+                    if (_validateFields()) {
+                      setState(() {
+                        _isRegistering = true;
+                      });
+
+                      String email = emailController.text;
+                      String password1 = password1Controller.text;
+                      String password2 = password2Controller.text;
+                      String nombre = nombreController.text;
+                      String apellido = apellidoController.text;
+                      String alias = aliasController.text;
+                      String sexo = selectedSexo ?? '';
+                      String tipoIdentificacion = selectedTipoIdentificacion ?? '';
+                      String numeroIdentificacion = numeroIdentificacionController.text;
+                      String fechaNacimiento = _convertDateFormat(fechaNacimientoController.text);
+                      String telefono = telefonoController.text;
+                      String pais = selectedPais ?? ''; // Agregar el país seleccionado
+                      
+                      final messenger = ScaffoldMessenger.of(context);
+                      final currentContext = context;
+
+                      try {
+                        var response = await Provider.of<ApiService>(currentContext, listen: false)
+                            .register(email, password1, password2, nombre, apellido, alias, sexo, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono, pais);
+
+                        if (!context.mounted) return;
+
+                        if (response['success']) {
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('Cuenta registrada')),
+                          );
+                        } else {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(response['message'] ?? 'Error desconocido')),
+                          );
+                        }
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Error al conectar con el servidor: $e')),
+                        );
+                      } finally {
+                        setState(() {
+                          _isRegistering = false;
+                        });
+                      }
+                    }
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+              foregroundColor: Theme.of(context).colorScheme.onSecondary,
+              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+            ),
+            child: const Text('Registrarse'),
+          ),
+        ],
+      ),
     );
   }
 }

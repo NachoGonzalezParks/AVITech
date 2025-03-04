@@ -30,8 +30,8 @@ class LandingScreenState extends State<LandingScreen> {
   Widget _introSection() {
     return Center(
       child: showAdminContent
-          ? Text('Descripción de uso para administradores')
-          : Text('Descripción de uso para jugadores'),
+          ? Text('Descripción de uso para administradores de torneos')
+          : Text('Descripción de uso para jugadores, delegados y árbitros '),
     );
   }
 
