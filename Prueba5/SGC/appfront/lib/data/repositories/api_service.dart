@@ -57,7 +57,7 @@ class ApiService extends ChangeNotifier {
   }
 
 
-  Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String sexo, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono) async {
+  Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono, String pais) async {
     _setLoading(true);
     final response = await http.post(
 
@@ -68,12 +68,12 @@ class ApiService extends ChangeNotifier {
         'password2': password2,
         'nombre' : nombre,
         'apellido' : apellido,
-        'alias' : alias,
-        'sexo' : sexo,
+        'alias' : alias,        
         'tipo_identificacion' : tipoIdentificacion,
         'numero_identificacion' : numeroIdentificacion,
         'fecha_nacimiento' : fechaNacimiento,
         'telefono' : telefono,
+        'pais': 'Argentina',
       },
 
     );
@@ -81,13 +81,58 @@ class ApiService extends ChangeNotifier {
 
     print(response);
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
+    final responseData = json.decode(response.body);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return responseData;
     } else {
       return {
         'success': false,
-        'message': 'Failed to register',
+        'message': 'Se produjo un error al registrar el usuario: ${responseData['message'] ?? 'Error desconocido'}',
       };
     }
   }
+
+  Future<List<String>> listarPaises() async {
+  final response = await http.post(Uri.parse('$baseUrl/listar_paises/'));
+
+  if (response.statusCode == 200) {
+    // Decodificar la respuesta JSON
+    final Map<String, dynamic> responseBody = json.decode(response.body);
+
+    // Verificar si la respuesta contiene la clave "paises"
+    if (responseBody.containsKey('paises')) {
+      // Extraer la lista de países como una lista de strings
+      return List<String>.from(responseBody['paises']);
+    } else {
+      throw Exception('La respuesta no contiene la clave "paises"');
+    }
+  } else {
+    throw Exception('Error al cargar países: ${response.statusCode}');
+  }
+}
+
+Future<List<String>> listarTiposIdentificacionPorPais(String nombrePais) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/listar_tipos_identificacion_por_pais/'),
+    body: {
+      'nombre_pais': nombrePais, // Enviar el nombre del país en el cuerpo
+    },
+  );
+
+  if (response.statusCode == 200) {
+    // Decodificar la respuesta JSON
+    final Map<String, dynamic> responseBody = json.decode(response.body);
+
+    // Verificar si la respuesta contiene la clave "tipos_identificacion"
+    if (responseBody.containsKey('tipos_identificacion')) {
+      // Extraer la lista de tipos de identificación
+      return List<String>.from(responseBody['tipos_identificacion']);
+    } else {
+      throw Exception('La respuesta no contiene la clave "tipos_identificacion"');
+    }
+  } else {
+    throw Exception('Error al cargar tipos de identificación: ${response.statusCode}');
+  }
+}
 }

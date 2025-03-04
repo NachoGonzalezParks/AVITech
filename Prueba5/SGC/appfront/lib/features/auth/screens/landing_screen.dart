@@ -33,8 +33,8 @@ class LandingScreenState extends State<LandingScreen> {
       child: Center(
         child: Text(
           showAdminContent
-              ? 'Descripción de uso para administradores'
-              : 'Descripción de uso para jugadores',
+              ? 'Descripción de uso para administradores (LS)'
+              : 'Descripción de uso para jugadores (LS)',
         ),
       ),
     );

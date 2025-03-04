@@ -22,15 +22,61 @@ class RegisterFormState extends State<RegisterForm> {
   final TextEditingController fechaNacimientoController = TextEditingController();
   final TextEditingController telefonoController = TextEditingController();
 
-  final List<String> tipoIdentificacionOptions = [
-    'DNI',
-    'RUC',
-    'Pasaporte',
-  ];
-
+  List<String> tipoIdentificacionOptions = []; // Lista de tipos de identificación
   String? selectedTipoIdentificacion;
+  String? selectedPais; // Variable para almacenar el país seleccionado
+  List<String> paises = []; // Lista de países
   final _formKey = GlobalKey<FormState>();
   bool _isRegistering = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Retrasar la llamada a _cargarPaises hasta que el contexto esté listo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarPaises();
+    });
+  }
+
+  // Método para cargar la lista de países desde el backend
+  Future<void> _cargarPaises() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final listaPaises = await apiService.listarPaises(); // Obtener la lista de países
+
+      setState(() {
+        paises = listaPaises; // Asignar la lista de nombres de países
+        selectedPais = paises.isNotEmpty ? paises[0] : null; // Seleccionar el primer país por defecto
+      });
+
+      // Cargar los tipos de identificación para el país seleccionado
+      if (selectedPais != null) {
+        await _cargarTiposIdentificacion(selectedPais!);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar países: $e')),
+      );
+    }
+  }
+
+  // Método para cargar los tipos de identificación según el país seleccionado
+  Future<void> _cargarTiposIdentificacion(String nombrePais) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final tiposIdentificacion = await apiService.listarTiposIdentificacionPorPais(nombrePais);
+
+      setState(() {
+        tipoIdentificacionOptions = tiposIdentificacion; // Asignar la lista de tipos de identificación
+        selectedTipoIdentificacion = tipoIdentificacionOptions.isNotEmpty ? tipoIdentificacionOptions[0] : null; // Seleccionar el primer tipo por defecto
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar tipos de identificación: $e')),
+      );
+    }
+  }
 
   String _convertDateFormat(String date) {
     try {
@@ -69,7 +115,8 @@ class RegisterFormState extends State<RegisterForm> {
         selectedTipoIdentificacion == null ||
         numeroIdentificacionController.text.isEmpty ||
         fechaNacimientoController.text.isEmpty ||
-        telefonoController.text.isEmpty) {
+        telefonoController.text.isEmpty ||
+        selectedPais == null) { // Validar que se seleccione un país
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Todos los campos son obligatorios.')),
       );
@@ -122,6 +169,33 @@ class RegisterFormState extends State<RegisterForm> {
               TextFormField(
                 controller: emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              // Desplegable de países
+              DropdownButtonFormField<String>(
+                value: selectedPais,
+                decoration: const InputDecoration(labelText: 'País'),
+                items: paises.map((pais) {
+                  return DropdownMenuItem<String>(
+                    value: pais,
+                    child: Text(pais),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) async {
+                  setState(() {
+                    selectedPais = newValue;
+                  });
+
+                  // Cargar los tipos de identificación para el nuevo país seleccionado
+                  if (newValue != null) {
+                    await _cargarTiposIdentificacion(newValue);
+                  }
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, selecciona un país';
+                  }
+                  return null;
+                },
               ),
               Row(
                 children: [
@@ -204,15 +278,14 @@ class RegisterFormState extends State<RegisterForm> {
                           String numeroIdentificacion = numeroIdentificacionController.text;
                           String fechaNacimiento = _convertDateFormat(fechaNacimientoController.text);
                           String telefono = telefonoController.text;
+                          String pais = selectedPais ?? ''; // Agregar el país seleccionado
                           
                           final messenger = ScaffoldMessenger.of(context);
                           final currentContext = context;
 
                           try {
-                            var response = await Provider.of<ApiService>(currentContext, listen: false)
-                                .register(email, password1, password2, nombre, apellido, alias, sexo, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono);
-
-                            // print(response);
+                            var response = Provider.of<ApiService>(currentContext, listen: false)
+                                .register(email, password1, password2, nombre, apellido, alias, tipoIdentificacion, numeroIdentificacion, fechaNacimiento, telefono, pais);
 
                             if (!context.mounted) return;
 
