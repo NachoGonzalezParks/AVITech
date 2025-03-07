@@ -57,7 +57,7 @@ class ApiService extends ChangeNotifier {
   }
 
 
-  Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono, String pais) async {
+  Future<Map<String, dynamic>> register(String email, String password1, String password2, String nombre, String apellido, String alias, String sexo, String tipoIdentificacion, String numeroIdentificacion, String fechaNacimiento, String telefono, String pais) async {
     _setLoading(true);
     final response = await http.post(
 
@@ -68,12 +68,13 @@ class ApiService extends ChangeNotifier {
         'password2': password2,
         'nombre' : nombre,
         'apellido' : apellido,
-        'alias' : alias,        
+        'alias' : alias, 
+        'sexo' : sexo,       
         'tipo_identificacion' : tipoIdentificacion,
         'numero_identificacion' : numeroIdentificacion,
         'fecha_nacimiento' : fechaNacimiento,
         'telefono' : telefono,
-        'pais': 'Argentina',
+        'pais': pais,
       },
 
     );
@@ -92,6 +93,26 @@ class ApiService extends ChangeNotifier {
       };
     }
   }
+
+  Future<List<String>> listarSexos() async {
+  final response = await http.post(Uri.parse('$baseUrl/listar_sexos/'));
+
+  if (response.statusCode == 200) {
+    // Decodificar la respuesta JSON
+    final Map<String, dynamic> responseBody = json.decode(response.body);
+
+    // Verificar si la respuesta contiene la clave "paises"
+    if (responseBody.containsKey('sexos')) {
+      // Extraer la lista de países como una lista de strings
+      return List<String>.from(responseBody['sexos']);
+    } else {
+      throw Exception('La respuesta no contiene la clave "sexos"');
+    }
+  } else {
+    throw Exception('Error al cargar países: ${response.statusCode}');
+  }
+}
+
 
   Future<List<String>> listarPaises() async {
   final response = await http.post(Uri.parse('$baseUrl/listar_paises/'));
