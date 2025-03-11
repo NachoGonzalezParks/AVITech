@@ -16,6 +16,11 @@ class AuthModalState extends State<AuthModal> with SingleTickerProviderStateMixi
     _tabController = TabController(length: 2, vsync: this);
   }
 
+  // Método para cambiar a la solapa "Iniciar sesión"
+  void cambiarASolapaIniciarSesion() {
+    _tabController.animateTo(1); // Cambiar a la segunda solapa (índice 1)
+  }  
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -24,19 +29,20 @@ class AuthModalState extends State<AuthModal> with SingleTickerProviderStateMixi
         children: [
           TabBar(
             controller: _tabController,
-            tabs: [
+            tabs: const [
               Tab(text: 'Crear cuenta'),
               Tab(text: 'Iniciar sesión'),
             ],
           ),
           Container(
             height: 600,
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: TabBarView(
               controller: _tabController,
               children: [
-                RegisterForm(),
-                LoginForm(),
+                RegisterForm(cambiarASolapaIniciarSesion: cambiarASolapaIniciarSesion, // Pasar el método como parámetro
+                ),
+                const LoginForm(),
               ],
             ),
           ),

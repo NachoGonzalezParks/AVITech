@@ -4,12 +4,13 @@ import 'package:intl/intl.dart';
 import 'package:appfront/data/repositories/api_service.dart';
 
 class RegisterForm extends StatefulWidget {
-  const RegisterForm({super.key});
+  final VoidCallback cambiarASolapaIniciarSesion; // Parámetro requerido
+
+  const RegisterForm({super.key, required this.cambiarASolapaIniciarSesion}); // Constructor actualizado
 
   @override
   RegisterFormState createState() => RegisterFormState();
 }
-
 class RegisterFormState extends State<RegisterForm> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController password1Controller = TextEditingController();
@@ -139,15 +140,15 @@ class RegisterFormState extends State<RegisterForm> {
         password2Controller.text.isEmpty ||
         nombreController.text.isEmpty ||
         apellidoController.text.isEmpty ||
-        aliasController.text.isEmpty ||
+        //aliasController.text.isEmpty ||
         selectedTipoIdentificacion == null ||
         numeroIdentificacionController.text.isEmpty ||
         fechaNacimientoController.text.isEmpty ||
-        telefonoController.text.isEmpty ||
+        //telefonoController.text.isEmpty ||
         selectedSexo == null ||        
         selectedPais == null) { // Validar que se seleccione un país
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Todos los campos son obligatorios.')),
+        const SnackBar(content: Text('Todos los campos con (*) son obligatorios.')),
       );
       return false;
     }
@@ -162,6 +163,35 @@ class RegisterFormState extends State<RegisterForm> {
     return true;
   }
 
+
+  void _limpiarFormulario() {
+    setState(() {
+      // Limpiar los controladores de texto
+      nombreController.clear();
+      apellidoController.clear();
+      aliasController.clear();
+      emailController.clear();
+      numeroIdentificacionController.clear();
+      fechaNacimientoController.clear();
+      telefonoController.clear();
+      password1Controller.clear();
+      password2Controller.clear();
+
+      // Restablecer los desplegables a sus valores por defecto
+      selectedSexo = sexos.isNotEmpty ? sexos[0] : null;
+      selectedPais = paises.isNotEmpty ? paises[0] : null;
+      _cargarTiposIdentificacion(selectedPais!);
+      selectedTipoIdentificacion = tipoIdentificacionOptions.isNotEmpty ? tipoIdentificacionOptions[0] : null;
+    });
+  }
+
+  // Método para cambiar a la solapa "Iniciar sesión"
+  void _cambiarASolapaIniciarSesion() {
+    // Suponiendo que el TabController está en el widget padre
+    //if (context.findAncestorStateOfType<LoginForm>() != null) {
+    //  context.findAncestorStateOfType<LoginForm>()!.cambiarASolapaIniciarSesion();
+    //}
+  }
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -180,14 +210,14 @@ class RegisterFormState extends State<RegisterForm> {
                         Expanded(
                           child: TextFormField(
                             controller: nombreController,
-                            decoration: const InputDecoration(labelText: 'Nombre'),
+                            decoration: const InputDecoration(labelText: 'Nombre *'),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: TextFormField(
                             controller: apellidoController,
-                            decoration: const InputDecoration(labelText: 'Apellido'),
+                            decoration: const InputDecoration(labelText: 'Apellido *'),
                           ),
                         ),
                       ],
@@ -198,12 +228,12 @@ class RegisterFormState extends State<RegisterForm> {
                     ),
                     TextFormField(
                       controller: emailController,
-                      decoration: const InputDecoration(labelText: 'Email'),
+                      decoration: const InputDecoration(labelText: 'Email *'),
                     ),
                     // Desplegable de sexos
                     DropdownButtonFormField<String>(
                       value: selectedSexo,
-                      decoration: const InputDecoration(labelText: 'Sexo'),
+                      decoration: const InputDecoration(labelText: 'Sexo *'),
                       items: sexos.map((sexo) {
                         return DropdownMenuItem<String>(
                           value: sexo,
@@ -225,7 +255,7 @@ class RegisterFormState extends State<RegisterForm> {
                     // Desplegable de países
                     DropdownButtonFormField<String>(
                       value: selectedPais,
-                      decoration: const InputDecoration(labelText: 'País'),
+                      decoration: const InputDecoration(labelText: 'País *'),
                       items: paises.map((pais) {
                         return DropdownMenuItem<String>(
                           value: pais,
@@ -254,7 +284,7 @@ class RegisterFormState extends State<RegisterForm> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedTipoIdentificacion,
-                            decoration: const InputDecoration(labelText: 'Tipo de Documento'),
+                            decoration: const InputDecoration(labelText: 'Tipo de Documento *'),
                             items: tipoIdentificacionOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -272,7 +302,7 @@ class RegisterFormState extends State<RegisterForm> {
                         Expanded(
                           child: TextFormField(
                             controller: numeroIdentificacionController,
-                            decoration: const InputDecoration(labelText: 'Documento'),
+                            decoration: const InputDecoration(labelText: 'Documento *'),
                           ),
                         ),
                       ],
@@ -292,7 +322,7 @@ class RegisterFormState extends State<RegisterForm> {
                             child: AbsorbPointer(
                               child: TextFormField(
                                 controller: fechaNacimientoController,
-                                decoration: const InputDecoration(labelText: 'Fecha de Nacimiento'),
+                                decoration: const InputDecoration(labelText: 'Fecha de Nacimiento * (dd/mm/aaaa)'),
                               ),
                             ),
                           ),
@@ -301,12 +331,12 @@ class RegisterFormState extends State<RegisterForm> {
                     ),
                     TextFormField(
                       controller: password1Controller,
-                      decoration: const InputDecoration(labelText: 'Contraseña'),
+                      decoration: const InputDecoration(labelText: 'Contraseña *'),
                       obscureText: true,
                     ),
                     TextFormField(
                       controller: password2Controller,
-                      decoration: const InputDecoration(labelText: 'Repite tu contraseña'),
+                      decoration: const InputDecoration(labelText: 'Repite tu contraseña *'),
                       obscureText: true,
                     ),
                   ],
@@ -348,16 +378,33 @@ class RegisterFormState extends State<RegisterForm> {
 
                         if (response['success']) {
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('Cuenta registrada')),
+                            SnackBar( // Sin "const" aquí
+                              content: const Text('Cuenta registrada con éxito, revisa tu correo para activarla.'),
+                              duration: const Duration(seconds: 15), // Duración de 5 segundos
+                              action: SnackBarAction(
+                                label: 'Aceptar',
+                                onPressed: () {
+                                  messenger.hideCurrentSnackBar(); // Ocultar el SnackBar manualmente
+                                  widget.cambiarASolapaIniciarSesion();
+                                },
+                              ),
+                            ),
                           );
-                        } else {
+                          _limpiarFormulario(); // Limpiar el formulario
+                          //widget.cambiarASolapaIniciarSesion(); // Cambiar a la solapa "Iniciar sesión"
+                        } 
+                        else {
                           messenger.showSnackBar(
-                            SnackBar(content: Text(response['message'] ?? 'Error desconocido')),
+                            SnackBar(content: Text(response['message'] ?? 'Error desconocido'),
+                                     duration: const Duration(seconds: 10)
+                            ),
                           );
                         }
                       } catch (e) {
                         messenger.showSnackBar(
-                          SnackBar(content: Text('Error al conectar con el servidor: $e')),
+                          SnackBar(content: Text('Error al conectar con el servidor: $e'),
+                                   duration: const Duration(seconds: 10)
+                          ),
                         );
                       } finally {
                         setState(() {

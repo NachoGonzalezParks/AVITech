@@ -36,6 +36,26 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
+def validar_fecha(fecha, mayor_a_hoy, menor_a_hoy):
+    # sirve para controlar el formato de cualquier fecha, 
+    # si los parámetros mayor a hoy o menor_a_hoy se pasan en verdadero controla con respecto a la fecha actual
+    # si se pasan en falso solo controla el formato
+    try:
+        # Intentar convertir la fecha al formato dd/mm/yyyy
+        fecha_controlada = datetime.strptime(fecha, '%d/%m/%Y')
+        
+        # Verificar que la fecha no sea en el futuro
+        if mayor_a_hoy == True and fecha_controlada > datetime.now():
+            return False, 'La fecha ingresada no puede ser mayor a la actual.'
+        
+        # Verificar que la fecha no sea en el pasado
+        if menor_a_hoy == True and fecha_controlada < datetime.now():
+            return False, 'La fecha ingresada no puede ser menor a la actual.'
+
+        return True, None  # La fecha es válida
+    except ValueError:
+        return False, 'La fecha ingresada no es válida (formato: dd/mm/aaaa).'
+
 @api_view(['POST'])
 def listar_paises(request):
     # Esta vista devuleve la lista de paises
@@ -145,6 +165,10 @@ def registro_usuario(request):
 
         if not fecha_nacimiento:
             return Response({'success': False, 'message': 'La fecha de nacimiento no pueden estar vacía.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        es_valida, mensaje_error = validar_fecha(fecha_nacimiento, False, False)
+        if not es_valida:
+            return Response({'success': False, 'message': mensaje_error}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             validate_email(email)
@@ -292,8 +316,7 @@ def login_usuario(request):
 
     except Exception as e:
         return Response({'success': False, 'message': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    
+ 
 
 @api_view(['POST'])
 def logout_usuario(request):
@@ -332,6 +355,7 @@ def get_user_groups(user):
         'groups': group_names
     })
 
+
 def marcar_login(accion, id, email):
     try:
         if accion == 'loguear':
@@ -349,7 +373,6 @@ def marcar_login(accion, id, email):
 
     except Exception as e:
         raise RuntimeError(f"Error al realizar la acción {accion}: {str(e)}")
-
 
 
 @api_view(['POST'])
@@ -399,6 +422,7 @@ def enviar_email_enlace(usuario, persona, tipo, request):
         # Opcional: lanza una excepción personalizada para manejarla en la vista
         raise Exception("Error al enviar el enlace por email.") from e
 
+
 @api_view(['POST'])
 def nuevo_pass(request, uidb64, token):
     # Esta vista reestablece la contraseña 
@@ -422,6 +446,7 @@ def nuevo_pass(request, uidb64, token):
             return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (token no reconocido)."}, status=400)
     else:
         return JsonResponse({"error": "El enlace de restablecimiento no es válido o ha expirado (usuario incorrecto)."}, status=400)
+
 
 def verificar_pago(user):
     # Falta la funcionalidad...
