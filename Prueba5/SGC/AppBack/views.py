@@ -42,7 +42,8 @@ def validar_fecha(fecha, mayor_a_hoy, menor_a_hoy):
     # si se pasan en falso solo controla el formato
     try:
         # Intentar convertir la fecha al formato dd/mm/yyyy
-        fecha_controlada = datetime.strptime(fecha, '%d/%m/%Y')
+        ##fecha_controlada = datetime.strptime(fecha, '%d/%m/%Y')
+        fecha_controlada = datetime.strptime(fecha, '%Y-%m-%d')
         
         # Verificar que la fecha no sea en el futuro
         if mayor_a_hoy == True and fecha_controlada > datetime.now():

@@ -29,7 +29,7 @@ class LoginFormState extends State<LoginForm> {
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Por favor ingrese su email';
-              } else if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+$").hasMatch(value)) {
+              } else if (!RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(value)) {
                 return 'Ingrese un email válido';
               } else {
               return null;
