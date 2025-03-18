@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-i4pb86*0qv5@en_lw+l5vd$=xlobgt$05q4!#nn7as==338xr-'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # False #True
+DEBUG = True # False #True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1',]
 
@@ -101,7 +101,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'Prueba5_PSQL',
         'USER': 'postgres',
-        'PASSWORD': 'Avit3578', 
+        'PASSWORD': '123Bbokari123', 
         'HOST': 'localhost',  # o el host donde está tu base de datos
         'PORT': '5432',       # El puerto por defecto de PostgreSQL es 5432
     }
@@ -161,6 +161,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:*',      # IP para emulador de Android
 ]
 
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'None'

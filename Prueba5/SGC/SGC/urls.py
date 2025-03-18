@@ -50,7 +50,8 @@ urlpatterns = [
     path('alta-usuarios/', views.AltaUsuariosView.as_view(), name='alta_usuarios'),
     path('listar_paises/', views.listar_paises, name='listar_paises'),
     path('listar_tipos_identificacion_por_pais/', views.listar_tipos_identificacion_por_pais, name='listar_tipos_identificacion_por_pais'),
-    path('listar_sexos/', views.listar_sexos, name='listar_sexos')
+    path('listar_sexos/', views.listar_sexos, name='listar_sexos'),
+    path('crear-torneo/', views.AltaTorneoView.as_view(), name='crear_torneo'),
 ]
 
  

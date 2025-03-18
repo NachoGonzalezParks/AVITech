@@ -4,7 +4,7 @@ from django.db import transaction  # Para asegurar atomicidad
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales, Paises                         
+from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales, Paises, Torneos, Ciudades, Disciplinas, Categorias, EstadosTorneos                      
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -28,9 +28,11 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.hashers import make_password
 from django.views import View
+from django.utils.timezone import now
 import logging
 import pandas as pd
 import re
+import json
 from io import BytesIO
 from datetime import datetime
 logger = logging.getLogger(__name__)
@@ -229,11 +231,14 @@ def login_usuario(request):
 
         try:
             email_address = EmailAddress.objects.get(user=user, email=username)
+
         except ObjectDoesNotExist:
             return Response({'success': False, 'message': 'No se encontró una cuenta asociada a este correo.'}, status=status.HTTP_404_NOT_FOUND)
 
         if not email_address.verified:
             return Response({'success': False, 'message': 'La cuenta no ha sido verificada.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        login(request, user)
 
         response = get_user_groups(user)
 
@@ -594,3 +599,211 @@ class AltaUsuariosView(View):
     def cancelar_usuarios(self, request, *args, **kwargs):
         UsuariosTemporales.objects.filter(creado_por=request.user).delete()
         return JsonResponse({"message": "Proceso cancelado y datos eliminados temporalmente."})
+    
+
+
+
+class AltaTorneoView(View):
+    def post(self, request, *args, **kwargs):        
+        # Verificar permisos
+        if not request.user.groups.filter(name__in=["Administrador de torneo", "Coadministrador"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+        
+        # Obtener datos del torneo desde la solicitud
+        try:
+            # Obtener datos del torneo desde la solicitud (JSON)
+            data = json.loads(request.body)
+            nombre = data.get("nombre")
+            logo = data.get("logo")
+            edicion = data.get("edicion")
+            tipo = data.get("tipo")
+            fecha_inicio = data.get("fecha_inicio")
+            fecha_fin = data.get("fecha_fin")
+            tipo_puntuacion = data.get("tipo_puntuacion")
+            duracion_partido = data.get("duracion_partido")
+            cantidad_tiempos = data.get("cantidad_tiempos")
+            duracion_entretiempo = data.get("duracion_entretiempo")
+            categoria = data.get("categoria")
+            ciudad = data.get("ciudad")
+            disciplina = data.get("disciplina")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Validar datos requeridos
+        errores = self.validar_datos(nombre, fecha_inicio, fecha_fin, duracion_partido, duracion_entretiempo, categoria, ciudad, disciplina)
+
+        if errores:
+            return JsonResponse({"errores": errores}, status=400)
+
+        # Obtener la instancia de la ciudad
+        ciudad = Ciudades.objects.filter(Nombre=ciudad).first()
+        if not ciudad:
+            return JsonResponse({"error": "La ciudad no existe"}, status=400)
+
+        # Obtener la instancia de la disciplina
+        disciplina = Disciplinas.objects.filter(Nombre=disciplina).first()
+        if not disciplina:
+            return JsonResponse({"error": "La disciplina no existe"}, status=400)
+
+        # Obtener la instancia de la categoría
+        categoria = Categorias.objects.filter(Nombre=categoria).first()
+        if not categoria:
+            return JsonResponse({"error": "La categoría no existe"}, status=400)
+
+        estado_torneo = EstadosTorneos.objects.filter(EstadoTorneoID=3).first()
+        if not estado_torneo:
+            return JsonResponse({"error": "El estado del torneo no existe."}, status=400)
+                
+        if request.user.is_authenticated:
+            administrador = request.user
+        else:
+            return JsonResponse({"error": "Usuario no autenticado"}, status=400)
+
+    
+        try:
+            with transaction.atomic():
+                torneo = Torneos.objects.create(
+                    Nombre=nombre,
+                    CiudadID=ciudad,
+                    Logo=logo,
+                    Edicion=edicion,
+                    DisciplinaID=disciplina,
+                    CategoriaID=categoria,
+                    Tipo=tipo,
+                    FechaInicio=fecha_inicio,
+                    FechaFin=fecha_fin,
+                    TipoPuntuacion=tipo_puntuacion,
+                    DuracionPartido=duracion_partido,
+                    CantidadTiempos=cantidad_tiempos,
+                    DuracionEntretiempo=duracion_entretiempo,
+                    EstadoTorneoID=estado_torneo,
+                    AdministradorID=administrador
+                )
+                torneo.save()
+            return JsonResponse({"message": "Torneo creado exitosamente.", "torneo_id": torneo.TorneoID})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    
+    def validar_datos(self, nombre, fecha_inicio, fecha_fin, duracion_partido, duracion_entretiempo, categoria, ciudad, disciplina):
+        #Agregar validación de imagen para el logo
+        #Ver qué es el tipo y tipo_puntuacion
+        errores = []
+        if not nombre:
+            errores.append("El nombre del torneo es obligatorio.")
+        if len(nombre) > 50:
+            errores.append("El nombre del torneo no puede superar los 50 caracteres.")
+        if not fecha_inicio:
+            errores.append("La fecha de inicio es obligatoria.")
+        if not fecha_fin:
+            errores.append("La fecha de finalización es obligatoria.")
+        if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
+            errores.append("La fecha de inicio no puede ser posterior a la fecha de finalización.")
+        if not duracion_partido:
+            errores.append("La duración del partido es obligatoria.")
+        if not duracion_entretiempo:
+            errores.append("La duración del entretiempo es obligatoria.")
+        if not categoria:
+            errores.append("La categoría es obligatoria.")
+        if not ciudad:
+            errores.append("La ciudad es obligatoria.")
+        if not disciplina:
+            errores.append("La disciplina es obligatoria.")
+        return errores
+
+
+class EliminarTorneoView(View):
+    def post(self, request, *args, **kwargs):
+        # Verificar permisos
+        if not request.user.groups.filter(name__in=["Administrador de torneo", "Coadministrador"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        # Obtener el ID del torneo desde la solicitud
+        try:
+            data = json.loads(request.body)
+            torneo_id = data.get("torneo_id")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Verificar si el torneo existe
+        try:
+            torneo = Torneos.objects.get(TorneoID=torneo_id)
+        except Torneos.DoesNotExist:
+            return JsonResponse({"error": "El torneo no existe."}, status=400)
+
+        # Eliminar el torneo
+        try:
+            torneo.delete()
+            return JsonResponse({"message": "Torneo eliminado exitosamente."})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+        
+
+class ModificarTorneoView(View):
+    def post(self, request, *args, **kwargs):
+        # Verificar permisos
+        if not request.user.groups.filter(name__in=["Administrador de torneo", "Coadministrador"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        # Obtener el ID del torneo desde la solicitud
+        try:
+            data = json.loads(request.body)
+            torneo_id = data.get("torneo_id")
+            nombre = data.get("nombre")
+            logo = data.get("logo")
+            edicion = data.get("edicion")
+            tipo = data.get("tipo")
+            fecha_inicio = data.get("fecha_inicio")
+            fecha_fin = data.get("fecha_fin")
+            tipo_puntuacion = data.get("tipo_puntuacion")
+            duracion_partido = data.get("duracion_partido")
+            cantidad_tiempos = data.get("cantidad_tiempos")
+            duracion_entretiempo = data.get("duracion_entretiempo")
+            categoria = data.get("categoria")
+            ciudad = data.get("ciudad")
+            disciplina = data.get("disciplina")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Verificar si el torneo existe
+        try:
+            torneo = Torneos.objects.get(TorneoID=torneo_id)
+        except Torneos.DoesNotExist:
+            return JsonResponse({"error": "El torneo no existe."}, status=400)
+
+        # Obtener la instancia de la ciudad
+        ciudad = Ciudades.objects.filter(Nombre=ciudad).first()
+        if not ciudad:
+            return JsonResponse({"error": "La ciudad no existe"}, status=400)
+
+        # Obtener la instancia de la disciplina
+        disciplina = Disciplinas.objects.filter(Nombre=disciplina).first()
+        if not disciplina:
+            return JsonResponse({"error": "La disciplina no existe"}, status=400)
+
+        # Obtener la instancia de la categoría
+        categoria = Categorias.objects.filter(Nombre=categoria).first()
+        if not categoria:
+            return JsonResponse({"error": "La categoría no existe"}, status=400)
+
+        # Actualizar los campos del torneo
+        torneo.Nombre = nombre or torneo.Nombre
+        torneo.Logo = logo or torneo.Logo
+        torneo.Edicion = edicion or torneo.Edicion
+        torneo.Tipo = tipo or torneo.Tipo
+        torneo.FechaInicio = fecha_inicio or torneo.FechaInicio
+        torneo.FechaFin = fecha_fin or torneo.FechaFin
+        torneo.TipoPuntuacion = tipo_puntuacion or torneo.TipoPuntuacion
+        torneo.DuracionPartido = duracion_partido or torneo.DuracionPartido
+        torneo.CantidadTiempos = cantidad_tiempos or torneo.CantidadTiempos
+        torneo.DuracionEntretiempo = duracion_entretiempo or torneo.DuracionEntretiempo
+        torneo.CategoriaID = categoria or torneo.CategoriaID
+        torneo.CiudadID = ciudad or torneo.CiudadID
+        torneo.DisciplinaID = disciplina or torneo.DisciplinaID
+
+        # Guardar cambios
+        try:
+            torneo.save()
+            return JsonResponse({"message": "Torneo modificado exitosamente.", "torneo_id": torneo.TorneoID})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
