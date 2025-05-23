@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token     
 from rest_framework.exceptions import ValidationError as DRFValidationError   
 from allauth.account.models import EmailAddress        
-from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales, Paises, Torneos, Ciudades, Disciplinas, Categorias, EstadosTorneos                      
+from .models import Personas, TiposIdentificacion, LoginPersona, Sexos, UsuariosTemporales, Paises, equipos, Ciudades, Disciplinas, Categorias, Divisiones, Equipos, Estadosequipos, EstadosEquipos, Jugadores, Delegados                      
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -29,6 +29,7 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.hashers import make_password
 from django.views import View
 from django.utils.timezone import now
+from django.utils.dateparse import parse_date
 import logging
 import pandas as pd
 import re
@@ -182,7 +183,7 @@ def registro_usuario(request):
             Telefono=telefono #request.data['telefono']
         )
 
-        admin_group = Group.objects.get(name="Administrador de torneo")
+        admin_group = Group.objects.get(name="Administrador de equipo")
         user.groups.add(admin_group)
 
         # Enviar email para requerir verificación de la cuenta
@@ -603,15 +604,15 @@ class AltaUsuariosView(View):
 
 
 
-class AltaTorneoView(View):
+class AltaequipoView(View):
     def post(self, request, *args, **kwargs):        
         # Verificar permisos
-        if not request.user.groups.filter(name__in=["Administrador de torneo", "Coadministrador"]).exists():
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador"]).exists():
             return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
         
-        # Obtener datos del torneo desde la solicitud
+        # Obtener datos del equipo desde la solicitud
         try:
-            # Obtener datos del torneo desde la solicitud (JSON)
+            # Obtener datos del equipo desde la solicitud (JSON)
             data = json.loads(request.body)
             nombre = data.get("nombre")
             logo = data.get("logo")
@@ -650,9 +651,9 @@ class AltaTorneoView(View):
         if not categoria:
             return JsonResponse({"error": "La categoría no existe"}, status=400)
 
-        estado_torneo = EstadosTorneos.objects.filter(EstadoTorneoID=3).first()
-        if not estado_torneo:
-            return JsonResponse({"error": "El estado del torneo no existe."}, status=400)
+        estado_equipo = Estadosequipos.objects.filter(EstadoequipoID=3).first()
+        if not estado_equipo:
+            return JsonResponse({"error": "El estado del equipo no existe."}, status=400)
                 
         if request.user.is_authenticated:
             administrador = request.user
@@ -662,7 +663,7 @@ class AltaTorneoView(View):
     
         try:
             with transaction.atomic():
-                torneo = Torneos.objects.create(
+                equipo = equipos.objects.create(
                     Nombre=nombre,
                     CiudadID=ciudad,
                     Logo=logo,
@@ -676,11 +677,11 @@ class AltaTorneoView(View):
                     DuracionPartido=duracion_partido,
                     CantidadTiempos=cantidad_tiempos,
                     DuracionEntretiempo=duracion_entretiempo,
-                    EstadoTorneoID=estado_torneo,
+                    EstadoequipoID=estado_equipo,
                     AdministradorID=administrador
                 )
-                torneo.save()
-            return JsonResponse({"message": "Torneo creado exitosamente.", "torneo_id": torneo.TorneoID})
+                equipo.save()
+            return JsonResponse({"message": "equipo creado exitosamente.", "equipo_id": equipo.equipoID})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     
@@ -689,9 +690,9 @@ class AltaTorneoView(View):
         #Ver qué es el tipo y tipo_puntuacion
         errores = []
         if not nombre:
-            errores.append("El nombre del torneo es obligatorio.")
+            errores.append("El nombre del equipo es obligatorio.")
         if len(nombre) > 50:
-            errores.append("El nombre del torneo no puede superar los 50 caracteres.")
+            errores.append("El nombre del equipo no puede superar los 50 caracteres.")
         if not fecha_inicio:
             errores.append("La fecha de inicio es obligatoria.")
         if not fecha_fin:
@@ -711,43 +712,43 @@ class AltaTorneoView(View):
         return errores
 
 
-class EliminarTorneoView(View):
+class EliminarequipoView(View):
     def post(self, request, *args, **kwargs):
         # Verificar permisos
-        if not request.user.groups.filter(name__in=["Administrador de torneo", "Coadministrador"]).exists():
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador"]).exists():
             return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
 
-        # Obtener el ID del torneo desde la solicitud
+        # Obtener el ID del equipo desde la solicitud
         try:
             data = json.loads(request.body)
-            torneo_id = data.get("torneo_id")
+            equipo_id = data.get("equipo_id")
         except json.JSONDecodeError:
             return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
 
-        # Verificar si el torneo existe
+        # Verificar si el equipo existe
         try:
-            torneo = Torneos.objects.get(TorneoID=torneo_id)
-        except Torneos.DoesNotExist:
-            return JsonResponse({"error": "El torneo no existe."}, status=400)
+            equipo = equipos.objects.get(equipoID=equipo_id)
+        except equipos.DoesNotExist:
+            return JsonResponse({"error": "El equipo no existe."}, status=400)
 
-        # Eliminar el torneo
+        # Eliminar el equipo
         try:
-            torneo.delete()
-            return JsonResponse({"message": "Torneo eliminado exitosamente."})
+            equipo.delete()
+            return JsonResponse({"message": "equipo eliminado exitosamente."})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
         
 
-class ModificarTorneoView(View):
+class ModificarequipoView(View):
     def post(self, request, *args, **kwargs):
         # Verificar permisos
-        if not request.user.groups.filter(name__in=["Administrador de torneo", "Coadministrador"]).exists():
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador"]).exists():
             return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
 
-        # Obtener el ID del torneo desde la solicitud
+        # Obtener el ID del equipo desde la solicitud
         try:
             data = json.loads(request.body)
-            torneo_id = data.get("torneo_id")
+            equipo_id = data.get("equipo_id")
             nombre = data.get("nombre")
             logo = data.get("logo")
             edicion = data.get("edicion")
@@ -764,11 +765,11 @@ class ModificarTorneoView(View):
         except json.JSONDecodeError:
             return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
 
-        # Verificar si el torneo existe
+        # Verificar si el equipo existe
         try:
-            torneo = Torneos.objects.get(TorneoID=torneo_id)
-        except Torneos.DoesNotExist:
-            return JsonResponse({"error": "El torneo no existe."}, status=400)
+            equipo = equipos.objects.get(equipoID=equipo_id)
+        except equipos.DoesNotExist:
+            return JsonResponse({"error": "El equipo no existe."}, status=400)
 
         # Obtener la instancia de la ciudad
         ciudad = Ciudades.objects.filter(Nombre=ciudad).first()
@@ -785,25 +786,380 @@ class ModificarTorneoView(View):
         if not categoria:
             return JsonResponse({"error": "La categoría no existe"}, status=400)
 
-        # Actualizar los campos del torneo
-        torneo.Nombre = nombre or torneo.Nombre
-        torneo.Logo = logo or torneo.Logo
-        torneo.Edicion = edicion or torneo.Edicion
-        torneo.Tipo = tipo or torneo.Tipo
-        torneo.FechaInicio = fecha_inicio or torneo.FechaInicio
-        torneo.FechaFin = fecha_fin or torneo.FechaFin
-        torneo.TipoPuntuacion = tipo_puntuacion or torneo.TipoPuntuacion
-        torneo.DuracionPartido = duracion_partido or torneo.DuracionPartido
-        torneo.CantidadTiempos = cantidad_tiempos or torneo.CantidadTiempos
-        torneo.DuracionEntretiempo = duracion_entretiempo or torneo.DuracionEntretiempo
-        torneo.CategoriaID = categoria or torneo.CategoriaID
-        torneo.CiudadID = ciudad or torneo.CiudadID
-        torneo.DisciplinaID = disciplina or torneo.DisciplinaID
+        # Actualizar los campos del equipo
+        equipo.Nombre = nombre or equipo.Nombre
+        equipo.Logo = logo or equipo.Logo
+        equipo.Edicion = edicion or equipo.Edicion
+        equipo.Tipo = tipo or equipo.Tipo
+        equipo.FechaInicio = fecha_inicio or equipo.FechaInicio
+        equipo.FechaFin = fecha_fin or equipo.FechaFin
+        equipo.TipoPuntuacion = tipo_puntuacion or equipo.TipoPuntuacion
+        equipo.DuracionPartido = duracion_partido or equipo.DuracionPartido
+        equipo.CantidadTiempos = cantidad_tiempos or equipo.CantidadTiempos
+        equipo.DuracionEntretiempo = duracion_entretiempo or equipo.DuracionEntretiempo
+        equipo.CategoriaID = categoria or equipo.CategoriaID
+        equipo.CiudadID = ciudad or equipo.CiudadID
+        equipo.DisciplinaID = disciplina or equipo.DisciplinaID
 
         # Guardar cambios
         try:
-            torneo.save()
-            return JsonResponse({"message": "Torneo modificado exitosamente.", "torneo_id": torneo.TorneoID})
+            equipo.save()
+            return JsonResponse({"message": "equipo modificado exitosamente.", "equipo_id": equipo.equipoID})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
+
+
+
+class AltaEquipoView(View):
+    def post(self, request, *args, **kwargs):        
+        # Verificar permisos
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+        
+        # Obtener datos del equipo desde la solicitud
+        try:
+            # Obtener datos del equipo desde la solicitud (JSON)
+            data = json.loads(request.body)
+            nombre = data.get("nombre")
+            logo = data.get("logo")
+            categoria = data.get("categoria")
+            disciplina = data.get("disciplina")
+            division = data.get("division")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Validar datos requeridos
+        errores = self.validar_datos(nombre, categoria, disciplina, division)
+
+        if errores:
+            return JsonResponse({"errores": errores}, status=400)
+
+
+        # Obtener la instancia de la disciplina
+        disciplina = Disciplinas.objects.filter(Nombre=disciplina).first()
+        if not disciplina:
+            return JsonResponse({"error": "La disciplina no existe"}, status=400)
+
+        # Obtener la instancia de la categoría
+        categoria = Categorias.objects.filter(Nombre=categoria).first()
+        if not categoria:
+            return JsonResponse({"error": "La categoría no existe"}, status=400)
+        
+        division = Divisiones.objects.filter(Nombre=division).first()
+        if not division:
+            return JsonResponse({"error": "La división no existe"}, status=400)
+
+        estado_equipo = EstadosEquipos.objects.filter(EstadoEquipoID=1).first()
+        if not estado_equipo:
+            return JsonResponse({"error": "El estado del equipo no existe."}, status=400)
+                
+        if request.user.is_authenticated:
+            persona = request.user
+        else:
+            return JsonResponse({"error": "Usuario no autenticado"}, status=400)
+
+    
+        try:
+            with transaction.atomic():
+                equipo = Equipos.objects.create(
+                    Nombre=nombre,
+                    Logo=logo,
+                    DisciplinaID=disciplina,
+                    CategoriaID=categoria,
+                    DivisionID=division,
+                    EstadoEquipoID=estado_equipo
+                )
+                equipo.save()
+            return JsonResponse({"message": "Equipo creado exitosamente.", "equipo_id": equipo.EquipoID})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    
+    def validar_datos(self, nombre, categoria, disciplina, division):
+        #Agregar validación de imagen para el logo
+        #Ver qué es el tipo y tipo_puntuacion
+        errores = []
+        if not nombre:
+            errores.append("El nombre del equipo es obligatorio.")
+        if len(nombre) > 50:
+            errores.append("El nombre del equipo no puede superar los 50 caracteres.")
+        if not categoria:
+            errores.append("La categoría es obligatoria.")
+        if not disciplina:
+            errores.append("La disciplina es obligatoria.")
+        if not division:
+            errores.append("La división es obligatoria.")
+        return errores
+    
+
+class ModificarEquipoView(View):
+    def post(self, request, *args, **kwargs):
+        # Verificar permisos
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        # Obtener el ID del equipo desde la solicitud
+        try:
+            data = json.loads(request.body)
+            equipo_id = data.get("equipo_id")
+            nombre = data.get("nombre")
+            logo = data.get("logo")
+            categoria = data.get("categoria")
+            disciplina = data.get("disciplina")
+            division = data.get("division")
+            estado_equipo = data.get("estadoId")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Verificar si el equipo existe
+        try:
+            equipo = Equipos.objects.get(equipoID=equipo_id)
+        except Equipos.DoesNotExist:
+            return JsonResponse({"error": "El equipo no existe."}, status=400)
+
+        # Obtener la instancia de la ciudad
+        ciudad = Ciudades.objects.filter(Nombre=ciudad).first()
+        if not ciudad:
+            return JsonResponse({"error": "La ciudad no existe"}, status=400)
+
+        # Obtener la instancia de la disciplina
+        disciplina = Disciplinas.objects.filter(Nombre=disciplina).first()
+        if not disciplina:
+            return JsonResponse({"error": "La disciplina no existe"}, status=400)
+
+        # Obtener la instancia de la categoría
+        categoria = Categorias.objects.filter(Nombre=categoria).first()
+        if not categoria:
+            return JsonResponse({"error": "La categoría no existe"}, status=400)
+        
+        division = Divisiones.objects.filter(Nombre=division).first()
+        if not division:
+            return JsonResponse({"error": "La división no existe"}, status=400)
+
+        # Actualizar los campos del equipo
+        equipo.Nombre = nombre or equipo.Nombre
+        equipo.Logo = logo or equipo.Logo
+        equipo.CategoriaID = categoria or equipo.CategoriaID
+        equipo.CiudadID = ciudad or equipo.CiudadID
+        equipo.DisciplinaID = disciplina or equipo.DisciplinaID
+        equipo.EstadoEquipoID = estado_equipo or equipo.EstadoEquipoID
+
+        # Guardar cambios
+        try:
+            equipo.save()
+            return JsonResponse({"message": "equipo modificado exitosamente.", "equipo_id": equipo.equipoID})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+
+class EliminarEquipoView(View):
+    def post(self, request, *args, **kwargs):
+        # Verificar permisos
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        # Obtener el ID del equipo desde la solicitud
+        try:
+            data = json.loads(request.body)
+            equipo_id = data.get("equipo_id")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Verificar si el equipo existe
+        try:
+            equipo = equipos.objects.get(equipoID=equipo_id)
+        except equipos.DoesNotExist:
+            return JsonResponse({"error": "El equipo no existe."}, status=400)
+
+        # Eliminar el equipo
+        try:
+            equipo.delete()
+            return JsonResponse({"message": "equipo eliminado exitosamente."})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+        
+
+
+
+class AltaJugadoresView(View):
+    def post(self, request, *args, **kwargs):
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        data = json.loads(request.body)
+        cargar_por_excel = data.get("cargar_por_excel", 0)
+
+        if cargar_por_excel == 1:
+            if 'archivo_excel' not in request.FILES:
+                return JsonResponse({"error": "No se ha enviado el archivo Excel."}, status=400)
+            
+            archivo_excel = request.FILES['archivo_excel']
+            try:
+                df = pd.read_excel(archivo_excel)
+
+                columnas_esperadas = [
+                    "user_id", "equipo_id", "fecha_incorporacion", "estado_actor_id", "rol_delegado", "rol_jugador_id", "foto"
+                ]
+                if list(df.columns) != columnas_esperadas:
+                    return JsonResponse({"error": "El archivo Excel no tiene el formato esperado."}, status=400)
+
+                df['rol_delegado'] = df['rol_delegado'].apply(lambda x: True if str(x).strip().lower() == "delegado" else False)
+
+                jugadores = df.to_dict(orient="records")
+
+            except Exception as e:
+                return JsonResponse({"error": f"Error al procesar el archivo Excel: {str(e)}"}, status=400)
+
+        else:
+            try:
+                jugadores = data.get("jugadores", [])
+            except json.JSONDecodeError:
+                return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+            if not jugadores:
+                return JsonResponse({"error": "No se proporcionaron jugadores."}, status=400)
+
+        resultados = []
+        errores_generales = []
+
+        for idx, jugador_data in enumerate(jugadores):
+            user_id = jugador_data.get("user_id")
+            equipo_id = jugador_data.get("equipo_id")
+            fecha_incorporacion = jugador_data.get("fecha_incorporacion")
+            estado_actor_id = jugador_data.get("estado_actor_id")
+            rol_delegado = jugador_data.get("rol_delegado", False)
+            rol_jugador_id = jugador_data.get("rol_jugador_id")
+            foto = jugador_data.get("foto", None)
+
+            errores = self.validar_datos(user_id, equipo_id, fecha_incorporacion, estado_actor_id, rol_delegado, rol_jugador_id)
+
+            if errores:
+                errores_generales.append({"jugador": idx, "errores": errores})
+                continue
+
+            try:
+                with transaction.atomic():
+                    jugador = Jugadores.objects.create(
+                        UserID_id=user_id,
+                        EquipoID_id=equipo_id,
+                        FechaIncorporacion=fecha_incorporacion,
+                        EstadoActorID_id=estado_actor_id,
+                        Rol_id=rol_jugador_id,
+                        Foto=foto
+                    )
+
+                    if rol_delegado:
+                        if Delegados.objects.filter(EquipoID_id=equipo_id).exists():
+                            errores_generales.append({
+                                "jugador": idx,
+                                "errores": [f"Ya existe un delegado para el equipo {equipo_id}."]
+                            })
+                        else:
+                            Delegados.objects.create(
+                                UserID_id=user_id,
+                                EquipoID_id=equipo_id,
+                                FechaIncorporacion=fecha_incorporacion,
+                                EstadoActorID_id=estado_actor_id,
+                                Foto=foto
+                            )
+
+                    resultados.append({
+                        "jugador_id": jugador.JugadorID,
+                        "user_id": user_id,
+                        "delegado": rol_delegado
+                    })
+
+            except Exception as e:
+                errores_generales.append({"jugador": idx, "error": str(e)})
+
+        return JsonResponse({
+            "creados": resultados,
+            "errores": errores_generales
+        }, status=207 if errores_generales else 201)
+
+    def validar_datos(self, user_id, equipo_id, fecha_incorporacion, estado_actor_id, rol_delegado, rol_jugador_id):
+        errores = []
+        if not user_id:
+            errores.append("El ID de usuario es obligatorio.")
+        if not equipo_id:
+            errores.append("El ID del equipo es obligatorio.")
+        if not fecha_incorporacion:
+            errores.append("La fecha de incorporación es obligatoria.")
+        if not estado_actor_id:
+            errores.append("El estado actor es obligatorio.")
+        if not rol_jugador_id:
+            errores.append("El ID del rol del jugador es obligatorio.")
+        return errores
+
+
+class ModificarJugadorView(View):
+    def put(self, request, jugador_id, *args, **kwargs):
+        if not request.user.groups.filter(name__in=["Administrador de equipo", "Coadministrador", "Delegado"]).exists():
+            return JsonResponse({"error": "No tienes permisos para realizar esta acción."}, status=403)
+
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "El cuerpo de la solicitud no contiene un JSON válido."}, status=400)
+
+        # Buscar jugador
+        try:
+            jugador = Jugadores.objects.get(pk=jugador_id)
+        except Jugadores.DoesNotExist:
+            return JsonResponse({"error": "El jugador especificado no existe."}, status=404)
+
+        # Validar y obtener datos del JSON
+        equipo_id = data.get("equipo_id")
+        estado_actor_id = data.get("estado_actor_id")
+        fecha_incorporacion = data.get("fecha_incorporacion")
+        rol_delegado = data.get("rol_delegado", False)
+        rol_jugador_id = data.get("rol_jugador_id")
+        foto = data.get("foto", None)
+
+        errores = []
+        if not equipo_id:
+            errores.append("El ID del equipo es obligatorio.")
+        if not estado_actor_id:
+            errores.append("El estado actor es obligatorio.")
+        if not fecha_incorporacion:
+            errores.append("La fecha de incorporación es obligatoria.")
+        if not rol_jugador_id:
+            errores.append("El ID del rol del jugador es obligatorio.")
+
+        if errores:
+            return JsonResponse({"errores": errores}, status=400)
+
+        try:
+            with transaction.atomic():
+                jugador.EquipoID_id = equipo_id
+                jugador.EstadoActorID_id = estado_actor_id
+                jugador.FechaIncorporacion = parse_date(fecha_incorporacion)
+                jugador.Rol_id = rol_jugador_id
+                if foto:
+                    jugador.Foto = foto
+                jugador.save()
+
+                # Si se marcó como delegado
+                if rol_delegado:
+                    if not Delegados.objects.filter(EquipoID_id=equipo_id).exclude(UserID=jugador.UserID).exists():
+                        Delegados.objects.update_or_create(
+                            UserID=jugador.UserID,
+                            defaults={
+                                "EquipoID_id": equipo_id,
+                                "FechaIncorporacion": jugador.FechaIncorporacion,
+                                "EstadoActorID_id": estado_actor_id,
+                                "Foto": jugador.Foto
+                            }
+                        )
+                    else:
+                        return JsonResponse({"error": f"Ya existe un delegado para el equipo {equipo_id}."}, status=400)
+                else:
+                    Delegados.objects.filter(UserID=jugador.UserID).delete()
+
+            return JsonResponse({
+                "mensaje": "Jugador modificado correctamente.",
+                "jugador_id": jugador_id
+            }, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": f"Error al modificar el jugador: {str(e)}"}, status=500)

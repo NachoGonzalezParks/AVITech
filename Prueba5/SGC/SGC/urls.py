@@ -52,6 +52,11 @@ urlpatterns = [
     path('listar_tipos_identificacion_por_pais/', views.listar_tipos_identificacion_por_pais, name='listar_tipos_identificacion_por_pais'),
     path('listar_sexos/', views.listar_sexos, name='listar_sexos'),
     path('crear-torneo/', views.AltaTorneoView.as_view(), name='crear_torneo'),
+    path('eliminar-torneo/', views.EliminarTorneoView.as_view(), name='eliminar_torneo'),
+    path('modificar-torneo/', views.ModificarTorneoView.as_view(), name='modificar_torneo'),
+    path('crear-equipo/', views.AltaEquipoView.as_view(), name='crear_equipo'),
+    path('eliminar-equipo/', views.EliminarEquipoView.as_view(), name='eliminar_equipo'),
+    path("jugadores/<int:jugador_id>/", views.ModificarJugadorView.as_view(), name="modificar_jugador"),
 ]
 
  
