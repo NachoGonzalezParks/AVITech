@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter Prueba6",
+            "type": "dart",
+            "request": "launch",
+            "program": "${workspaceFolder}/SGC/appfront/lib/main.dart",
+            "args": [
+                "--web-port=53101", //51595", // Usa el puerto que funciona
+                "--web-renderer=html",
+                "--device-id=edge"
+            ],
+            "flutterMode": "debug",
+            "toolArgs": [],
+            "env": {
+                "FLUTTER_WEB": "true"
+            }
+        },
+        {
+            "name": "Django",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/SGC/manage.py",
+            "args": [
+                "runserver",
+                "--noreload"
+            ],
+            "django": true,
+            "justMyCode": true,
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "SGC.settings"
+            }
+        }
+    ]
+}

@@ -1,6 +1,47 @@
 {
     "version": "0.2.0",
-    "configurations": [
+    "configurations": [                
+        {
+            "name": "Flutter: Debug Prueba6",
+            "type": "dart",
+            "request": "launch",
+            "program": "${workspaceFolder}\\Prueba6\\SGC\\appfront\\lib\\main.dart",
+            "cwd": "${workspaceFolder}\\Prueba6\\SGC\\appfront",
+            "args": [],
+            "flutterMode": "debug",
+            "toolArgs": ["--dart-define=ENVIRONMENT=DEV"]
+        },
+
+{
+            "name": "Flutter: Debug Web (Edge) - Prueba6",
+            "type": "dart",
+            "request": "launch",
+            "program": "C:/Users/aleja/OneDrive/Documentos/Ale/SistemaGC/AVITech/Prueba6/SGC/appfront/lib/main.dart",
+            "cwd": "C:/Users/aleja/OneDrive/Documentos/Ale/SistemaGC/AVITech/Prueba6/SGC/appfront",
+            "args": [
+                "--web-port=51595", // Usa el puerto que funciona
+                "--web-renderer=html",
+                "--device-id=edge"
+            ],
+            "flutterMode": "debug",
+            "toolArgs": [],
+            "env": {
+                "FLUTTER_WEB": "true"
+            }
+        },
+
+
+        {
+            "name": "Depurador de Python: Django - Prueba6",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "runserver"
+            ],
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}\\Prueba6\\SGC\\manage.py"
+        },
         {
             "name": "Depurador de Python: Django",
             "type": "debugpy",
